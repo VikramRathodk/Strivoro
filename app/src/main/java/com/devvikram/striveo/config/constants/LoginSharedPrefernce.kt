@@ -44,61 +44,98 @@ class LoginPreference @Inject constructor(
         }
     }
 
-    // Accessors
-    val isLoggedIn: Boolean
-        get() = prefs.getBoolean(IS_LOGGED_IN, false)
+    fun getUserId(): String {
+        return prefs.getString(USER_ID, "") ?: ""
+    }
 
-    val userId: String
-        get() = prefs.getString(USER_ID, "") ?: ""
+    fun getUsername(): String {
+        return prefs.getString(USERNAME, "") ?: ""
+    }
 
-    val username: String
-        get() = prefs.getString(USERNAME, "") ?: ""
+    fun getEmail(): String {
+        return prefs.getString(USER_EMAIL, "") ?: ""
+    }
 
-    val userEmail: String
-        get() = prefs.getString(USER_EMAIL, "") ?: ""
+    fun getAuthToken(): String {
+        return prefs.getString(AUTH_TOKEN, "") ?: ""
+    }
 
-    val authToken: String
-        get() = prefs.getString(AUTH_TOKEN, "") ?: ""
+    fun setLoggedIn(isLoggedIn: Boolean) {
+        prefs.edit { putBoolean(IS_LOGGED_IN, isLoggedIn) }
+    }
 
-    val rememberMe: Boolean
-        get() = prefs.getBoolean(REMEMBER_ME, false)
+    fun getRememberMe(): Boolean {
+        return prefs.getBoolean(REMEMBER_ME, false)
+    }
 
-    val lastLoginTime: Long
-        get() = prefs.getLong(LAST_LOGIN_TIME, 0L)
+    fun getLastLoginTime(): Long {
+        return prefs.getLong(LAST_LOGIN_TIME, 0L)
+    }
 
-    // Clear all login data (logout)
+    fun isLoggedIn(): Boolean {
+        return prefs.getBoolean(IS_LOGGED_IN, false)
+    }
+
+    // Clear only login-related data (preserve onboarding state)
     fun clearLoginData() {
-        prefs.edit { clear() }
+        // Store onboarding state before clearing
+        val onboardingCompleted = isOnboardingCompleted()
+
+        prefs.edit {
+            // Clear all data
+            clear()
+            // Restore onboarding state
+            putBoolean(ONBOARDING_COMPLETED, onboardingCompleted)
+        }
+    }
+
+    // Alternative method: Clear only login-specific keys (more explicit)
+    fun clearLoginDataSelective() {
+        prefs.edit {
+            remove(IS_LOGGED_IN)
+            remove(USER_ID)
+            remove(USERNAME)
+            remove(USER_EMAIL)
+            remove(AUTH_TOKEN)
+            remove(REMEMBER_ME)
+            remove(LAST_LOGIN_TIME)
+            // Keep ONBOARDING_COMPLETED intact
+        }
     }
 
     // Update specific preference
     fun updateAuthToken(token: String) {
-        prefs.edit().putString(AUTH_TOKEN, token).apply()
+        prefs.edit { putString(AUTH_TOKEN, token) }
     }
 
     fun updateRememberMe(remember: Boolean) {
-        prefs.edit().putBoolean(REMEMBER_ME, remember).apply()
+        prefs.edit { putBoolean(REMEMBER_ME, remember) }
     }
 
     fun isOnboardingCompleted(): Boolean {
-        return prefs.getBoolean( ONBOARDING_COMPLETED, false)
+        return prefs.getBoolean(ONBOARDING_COMPLETED, false)
     }
 
     fun setOnboardingCompleted(completed: Boolean) {
-        prefs.edit { putBoolean( ONBOARDING_COMPLETED, completed) }
+        prefs.edit { putBoolean(ONBOARDING_COMPLETED, completed) }
     }
 
-    // Consolidated accessor
-    val userData: UserData
-        get() = UserData(
-            isLoggedIn = isLoggedIn,
-            userId = userId,
-            username = username,
-            email = userEmail,
-            authToken = authToken,
-            rememberMe = rememberMe,
-            lastLoginTime = lastLoginTime
+    // Get current user data
+    fun getCurrentUserData(): UserData {
+        return UserData(
+            isLoggedIn = isLoggedIn(),
+            userId = getUserId(),
+            username = getUsername(),
+            email = getEmail(),
+            authToken = getAuthToken(),
+            rememberMe = getRememberMe(),
+            lastLoginTime = getLastLoginTime()
         )
+    }
+
+    fun completeReset() {
+        prefs.edit { clear() }
+    }
 }
 
 // Data class to represent the user's login session

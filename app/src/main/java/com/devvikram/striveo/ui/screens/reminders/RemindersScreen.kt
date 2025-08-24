@@ -4,6 +4,7 @@ package com.devvikram.striveo.ui.screens.reminders
 // RemindersScreen.kt
 
 import android.os.Build
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,7 +84,6 @@ data class ReminderStats(
 
 
 
-@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RemindersScreen(
@@ -298,7 +299,6 @@ private fun FilterChipsSection(
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun ReminderCard(
     reminder: Reminder,
@@ -365,13 +365,21 @@ private fun ReminderCard(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = reminder.dateTime.format(
-                                    DateTimeFormatter.ofPattern("MMM dd, HH:mm")
-                                ),
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                Text(
+                                    text = reminder.dateTime.format(
+                                        DateTimeFormatter.ofPattern("MMM dd, HH:mm")
+                                    ),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }else{
+                                Text(
+                                    text = reminder.dateTime.toString(),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(16.dp))
@@ -481,7 +489,6 @@ private fun EmptyState(filter: ReminderFilter) {
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddReminderDialog(
@@ -492,6 +499,7 @@ private fun AddReminderDialog(
     var description by remember { mutableStateOf("") }
     var selectedPriority by remember { mutableStateOf(ReminderPriority.MEDIUM) }
     var selectedCategory by remember { mutableStateOf(ReminderCategory.PERSONAL) }
+    val context = LocalContext.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -550,16 +558,20 @@ private fun AddReminderDialog(
             TextButton(
                 onClick = {
                     if (title.isNotBlank()) {
-                        onAddReminder(
-                            Reminder(
-                                id = System.currentTimeMillis().toString(),
-                                title = title,
-                                description = description,
-                                dateTime = LocalDateTime.now().plusHours(1),
-                                priority = selectedPriority,
-                                category = selectedCategory
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            onAddReminder(
+                                Reminder(
+                                    id = System.currentTimeMillis().toString(),
+                                    title = title,
+                                    description = description,
+                                    dateTime = LocalDateTime.now().plusHours(1),
+                                    priority = selectedPriority,
+                                    category = selectedCategory
+                                )
                             )
-                        )
+                        }else{
+                            Toast.makeText(context, "Add Reminder", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             ) {

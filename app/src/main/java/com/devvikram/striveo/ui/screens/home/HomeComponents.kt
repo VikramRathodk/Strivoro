@@ -317,7 +317,7 @@ fun StatCardPreview() {
 fun TaskFilterSection(selectedFilter: TaskFilter, onFilterSelected: (TaskFilter) -> Unit) {
     Column {
         Text(
-            text = "Tasks",
+            text = "Your Tasks",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 12.dp)

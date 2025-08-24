@@ -1,5 +1,7 @@
 package com.devvikram.striveo
 
+import android.content.Context
+import android.content.pm.PackageManager
 import java.security.MessageDigest
 import java.security.SecureRandom
 
@@ -40,6 +42,24 @@ class AppUtils {
             val bytes = password.toByteArray()
             val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
             return digest.joinToString("") { "%02x".format(it) }
+        }
+
+
+        fun getCurrentAppVersion(context: Context): String {
+            return try {
+                val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    context.packageManager.getPackageInfo(
+                        context.packageName,
+                        PackageManager.PackageInfoFlags.of(0)
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.packageManager.getPackageInfo(context.packageName, 0)
+                }
+                packageInfo.versionName ?: "Unknown"
+            } catch (e: Exception) {
+                "Unknown"
+            }
         }
 
 

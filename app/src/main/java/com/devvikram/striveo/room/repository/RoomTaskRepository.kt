@@ -38,4 +38,8 @@ class RoomTaskRepository @Inject constructor(
     suspend fun deleteAllTasks() {
         taskDao.deleteAllTasks()
     }
+
+   suspend fun deleteTaskById(taskId: String) {
+        taskDao.deleteTaskById(taskId)
+    }
 }

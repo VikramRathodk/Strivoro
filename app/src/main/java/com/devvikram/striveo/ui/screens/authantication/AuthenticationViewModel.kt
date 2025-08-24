@@ -1,312 +1,193 @@
 package com.devvikram.striveo.ui.screens.authantication
 
-import android.content.ContentValues.TAG
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devvikram.striveo.config.constants.App
 import com.devvikram.striveo.config.constants.LoginPreference
 import com.devvikram.striveo.config.mappers.ModelMappers
-import com.devvikram.striveo.firebase.models.MyFirebaseUser
 import com.devvikram.striveo.firebase.repository.FirebaseUserRepository
+import com.devvikram.striveo.room.model.RoomUser
 import com.devvikram.striveo.room.repository.RoomUserRepository
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-// Sealed class for authentication states
-sealed class AuthState {
-    object Idle : AuthState()
-    object Loading : AuthState()
-    data class Authenticated(val user: MyFirebaseUser) : AuthState()
-    data class Error(val message: String) : AuthState()
-    object Unauthenticated : AuthState()
-}
-
-// Form validation errors
-data class FormErrors(
-    val emailError: String? = null,
-    val passwordError: String? = null,
-    val confirmPasswordError: String? = null
-)
-
-// UI State with sealed class
-data class AuthUiState(
-    val authState: AuthState = AuthState.Idle,
-    val email: String = "",
-    val password: String = "",
-    val confirmPassword: String = "",
-    val formErrors: FormErrors = FormErrors()
-) {
-    val isLoading: Boolean get() = authState is AuthState.Loading
-    val isAuthenticated: Boolean get() = authState is AuthState.Authenticated
-    val errorMessage: String? get() = (authState as? AuthState.Error)?.message
-    val user: MyFirebaseUser? get() = (authState as? AuthState.Authenticated)?.user
-}
 
 @HiltViewModel
 class AuthenticationViewModel @Inject constructor(
     private val loginPreference: LoginPreference,
     private val firebaseUserRepository: FirebaseUserRepository,
-    private val roomUserRepository: RoomUserRepository
+    private val roomUserRepository: RoomUserRepository,
+    private val firebaseFirestore: FirebaseFirestore
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AuthUiState())
-    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
-    init {
-        val isAuthenticated = firebaseUserRepository.isUserAuthenticatedInFirebase()
-        _uiState.value = _uiState.value.copy(
-            authState = if (isAuthenticated) AuthState.Unauthenticated else AuthState.Idle
-        )
+    // Sign up
+
+    private val _registrationName = MutableStateFlow("")
+    val registrationName : StateFlow<String> = _registrationName.asStateFlow()
+
+    private val _registrationEmail = MutableStateFlow("")
+    val registrationEmail : StateFlow<String> = _registrationEmail.asStateFlow()
+
+
+    private val _registrationPassword = MutableStateFlow("")
+    val registrationPassword : StateFlow<String> = _registrationPassword.asStateFlow()
+
+    private val _registrationPhoneNumber = MutableStateFlow("")
+    val registrationPhoneNumber : StateFlow<String> = _registrationPhoneNumber.asStateFlow()
+
+
+    private val _signUpState = MutableStateFlow<SignUpState>(SignUpState.Initial)
+    val signUpState: StateFlow<SignUpState> = _signUpState.asStateFlow()
+
+
+    private val isTermAccepted = MutableStateFlow(false)
+    val isTermsAccepted: StateFlow<Boolean> = isTermAccepted.asStateFlow()
+
+
+    fun updateRegistrationName(name: String) {
+        _registrationName.value = name
     }
 
-    fun updateEmail(email: String) {
-        _uiState.value = _uiState.value.copy(
-            email = email,
-            formErrors = _uiState.value.formErrors.copy(emailError = null),
-            authState = if (_uiState.value.authState is AuthState.Error) AuthState.Idle else _uiState.value.authState
-        )
+    fun updateRegistrationEmail(email: String) {
+        _registrationEmail.value = email
     }
 
-    fun updatePassword(password: String) {
-        _uiState.value = _uiState.value.copy(
-            password = password,
-            formErrors = _uiState.value.formErrors.copy(passwordError = null),
-            authState = if (_uiState.value.authState is AuthState.Error) AuthState.Idle else _uiState.value.authState
-        )
+
+    fun updateRegistrationPassword(password: String) {
+        _registrationPassword.value = password
+    }
+    fun updateTermsAcceptance(isAccepted: Boolean) {
+        isTermAccepted.value = isAccepted
+    }
+    fun updateRegistrationPhoneNumber(phoneNumber: String) {
+        _registrationPhoneNumber.value = phoneNumber
     }
 
-    fun updateConfirmPassword(confirmPassword: String) {
-        _uiState.value = _uiState.value.copy(
-            confirmPassword = confirmPassword,
-            formErrors = _uiState.value.formErrors.copy(confirmPasswordError = null),
-            authState = if (_uiState.value.authState is AuthState.Error) AuthState.Idle else _uiState.value.authState
-        )
-    }
-
-    private fun validateLoginForm(): Boolean {
-        val currentState = _uiState.value
-
-        val emailError = when {
-            currentState.email.isBlank() -> "Email is required"
-            !android.util.Patterns.EMAIL_ADDRESS.matcher(currentState.email)
-                .matches() -> "Invalid email format"
-            else -> null
-        }
-
-        val passwordError = when {
-            currentState.password.isBlank() -> "Password is required"
-            currentState.password.length < 6 -> "Password must be at least 6 characters"
-            else -> null
-        }
-
-        val hasErrors = emailError != null || passwordError != null
-
-        if (hasErrors) {
-            _uiState.value = currentState.copy(
-                formErrors = FormErrors(
-                    emailError = emailError,
-                    passwordError = passwordError
-                )
-            )
-        }
-
-        return !hasErrors
-    }
-
-    private fun validateRegistrationForm(): Boolean {
-        val currentState = _uiState.value
-
-        val emailError = when {
-            currentState.email.isBlank() -> "Email is required"
-            !android.util.Patterns.EMAIL_ADDRESS.matcher(currentState.email)
-                .matches() -> "Invalid email format"
-            else -> null
-        }
-
-        val passwordError = when {
-            currentState.password.isBlank() -> "Password is required"
-            currentState.password.length < 6 -> "Password must be at least 6 characters"
-            else -> null
-        }
-
-        val confirmPasswordError = when {
-            currentState.confirmPassword.isBlank() -> "Please confirm your password"
-            currentState.password != currentState.confirmPassword -> "Passwords do not match"
-            else -> null
-        }
-
-        val hasErrors = emailError != null || passwordError != null || confirmPasswordError != null
-
-        if (hasErrors) {
-            _uiState.value = currentState.copy(
-                formErrors = FormErrors(
-                    emailError = emailError,
-                    passwordError = passwordError,
-                    confirmPasswordError = confirmPasswordError
-                )
-            )
-        }
-
-        return !hasErrors
-    }
-
-    fun login() {
-        if (!validateLoginForm()) return
-
-        val currentState = _uiState.value
+    fun registerUser(onRegisterSuccess: () -> Unit) {
         viewModelScope.launch {
-            _uiState.value = currentState.copy(authState = AuthState.Loading)
-
             try {
-                Log.d(TAG, "login: attempting login with email: ${currentState.email}")
+                _signUpState.value = SignUpState.Loading
 
-                withContext(Dispatchers.IO) {
-                    firebaseUserRepository.signInWithEmailAndPassword(
-                        currentState.email,
-                        currentState.password,
-                        onSuccess = { firebaseAuthUser ->
-                            Log.d(TAG, "Firebase Auth successful for: ${firebaseAuthUser.email}")
-
-                            // Launch another coroutine for Firestore operation
-                            viewModelScope.launch(Dispatchers.IO) {
-                                try {
-                                    firebaseUserRepository.getFirebaseUser(
-                                        firebaseAuthUser.email.toString(),
-                                        onSuccess = { myFirebaseUser ->
-                                            viewModelScope.launch(Dispatchers.Main) {
-                                                if (myFirebaseUser == null) {
-                                                    Log.e(TAG, "User not found in Firestore database")
-                                                    _uiState.value = _uiState.value.copy(
-                                                        authState = AuthState.Error("User profile not found. Please contact support.")
-                                                    )
-                                                } else {
-                                                    Log.d(TAG, "User retrieved successfully: ${myFirebaseUser.userId}")
-
-                                                    // Save login state and update UI
-                                                    saveLoginState(myFirebaseUser)
-
-                                                    _uiState.value = _uiState.value.copy(
-                                                        authState = AuthState.Authenticated(myFirebaseUser)
-                                                    )
-                                                }
-                                            }
-                                        },
-                                        onFailure = { exception ->
-                                            Log.e(TAG, "Failed to retrieve user from Firestore", exception)
-                                            viewModelScope.launch(Dispatchers.Main) {
-                                                _uiState.value = _uiState.value.copy(
-                                                    authState = AuthState.Error(getReadableErrorMessage(exception))
-                                                )
-                                            }
-                                        }
-                                    )
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "Error during Firestore user retrieval", e)
-                                    viewModelScope.launch(Dispatchers.Main) {
-                                        _uiState.value = _uiState.value.copy(
-                                            authState = AuthState.Error("Failed to load user profile: ${e.message}")
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                        onFailure = { exception ->
-                            Log.e(TAG, "Firebase Authentication failed", exception)
-                            viewModelScope.launch(Dispatchers.Main) {
-                                _uiState.value = _uiState.value.copy(
-                                    authState = AuthState.Error(getReadableErrorMessage(exception))
-                                )
-                            }
-                        }
-                    )
-                }
-
-            } catch (exception: Exception) {
-                Log.e(TAG, "Login failed with unexpected exception", exception)
-                _uiState.value = _uiState.value.copy(
-                    authState = AuthState.Error(getReadableErrorMessage(exception))
+                val userId = firebaseFirestore.collection(App.FIREBASE_COLLECTION_USERS).document().id
+                
+                val roomUser = RoomUser(
+                    userId =userId,
+                    name = _registrationName.value,
+                    phone = _registrationPhoneNumber.value,
+                    email = _registrationEmail.value,
+                    password = _registrationPassword.value,
+                    lastLoginAt = System.currentTimeMillis(),
+                    lastActiveAt = System.currentTimeMillis(),
+                    platform ="android",
+                    createdAt  =  System.currentTimeMillis(),
+                    lastModifiedAt = System.currentTimeMillis(),
                 )
+                
+                roomUserRepository.insertUser(roomUser)
+                firebaseUserRepository.insertUserToFirebase(
+                    user = ModelMappers.mapToFirebaseUser(roomUser),
+                    onSuccess = {
+                        _signUpState.value = SignUpState.Success("User registered successfully")
+                    },
+                    onFailure = { exception ->
+                        _signUpState.value = SignUpState.Error("Registration failed: ${exception.message}")
+                    }
+                )
+            }catch (e: Exception){
+                _signUpState.value = SignUpState.Error("Registration failed: ${e.message}")
+            }
+
+        }
+        onRegisterSuccess()
+    }
+
+    fun resetRegistrationState(){
+        _signUpState.value = SignUpState.Initial
+    }
+
+    // sign up state
+
+    sealed class SignUpState {
+        object Initial : SignUpState()
+        object Loading : SignUpState()
+        data class Success(
+            val message: String
+        ) : SignUpState()
+        data class Error(val message: String) : SignUpState()
+    }
+
+
+    // Sign In
+
+
+    private val _loginEmail = MutableStateFlow("")
+    val loginEmail : StateFlow<String> = _loginEmail.asStateFlow()
+
+    private val _loginPassword = MutableStateFlow("")
+    val loginPassword : StateFlow<String> = _loginPassword.asStateFlow()
+
+    private val _loginState = MutableStateFlow<LoginState>(LoginState.Initial)
+    val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
+
+    fun updateLoginEmail(email: String){
+        _loginEmail.value = email
+    }
+
+    fun updateLoginPassword(password: String){
+        _loginPassword.value = password
+    }
+    fun resetLoginState(){
+        _loginState.value = LoginState.Initial
+    }
+
+    fun loginUser(
+        onLoginSuccess: () -> Unit
+    ){
+        viewModelScope.launch {
+            try {
+                _loginState.value = LoginState.Loading
+
+                firebaseUserRepository.signIn(
+                    email = _loginEmail.value,
+                    password = _loginPassword.value,
+                    onSuccess = {
+                        _loginState.value = LoginState.Success("Login successful")
+                        loginPreference.saveLoginState(
+                            isLoggedIn = true,
+                            userId = it.userId,
+                            username = it.name,
+                            email = it.email,
+                            authToken = it.password,
+                            rememberMe = true,
+                            lastLoginTime = System.currentTimeMillis()
+                        )
+                        onLoginSuccess()
+                    },
+                    onFailure = { exception ->
+                        _loginState.value = LoginState.Error("Login failed: ${exception.message}")
+                    }
+                )
+            }catch (e: Exception){
+                _loginState.value = LoginState.Error("Login failed: ${e.message}")
             }
         }
     }
 
-    // Helper function to save login state
-    private suspend fun saveLoginState(user: MyFirebaseUser) {
-        try {
-            val currentTime = System.currentTimeMillis()
 
-            // Update user's last login time in Firestore
-            firebaseUserRepository.updateUserLastLogin(user.userId, currentTime)
 
-            // Save to local preferences
-            loginPreference.saveLoginState(
-                isLoggedIn = true,
-                userId = user.userId,
-                username = user.name,
-                email = user.email,
-                lastLoginTime = currentTime
-            )
-
-            // Update local Room database if needed
-            val roomUser = ModelMappers.mapToRoomUser(user.copy(lastLoginAt = currentTime))
-            roomUserRepository.insertUser(roomUser)
-
-            Log.d(TAG, "Login state saved successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving login state", e)
-            // Don't fail the login process for this
-        }
+    sealed class LoginState {
+        object Initial : LoginState()
+        object Loading : LoginState()
+        data class Success(
+            val message: String
+        ) : LoginState()
+        data class Error(val message: String) : LoginState()
     }
 
-    // Helper function to provide user-friendly error messages
-    private fun getReadableErrorMessage(exception: Exception): String {
-        return when {
-            exception.message?.contains("invalid-email", ignoreCase = true) == true ->
-                "Please enter a valid email address"
-            exception.message?.contains("user-disabled", ignoreCase = true) == true ->
-                "This account has been disabled. Please contact support."
-            exception.message?.contains("user-not-found", ignoreCase = true) == true ->
-                "No account found with this email address"
-            exception.message?.contains("wrong-password", ignoreCase = true) == true ->
-                "Incorrect password. Please try again."
-            exception.message?.contains("too-many-requests", ignoreCase = true) == true ->
-                "Too many failed attempts. Please try again later."
-            exception.message?.contains("network", ignoreCase = true) == true ->
-                "Network error. Please check your connection."
-            exception.message?.contains("timeout", ignoreCase = true) == true ->
-                "Request timed out. Please try again."
-            else -> exception.message ?: "Login failed. Please try again."
-        }
-    }
-
-    fun clearForm() {
-        _uiState.value = _uiState.value.copy(
-            email = "",
-            password = "",
-            confirmPassword = "",
-            formErrors = FormErrors(),
-            authState = AuthState.Idle
-        )
-    }
-
-    fun clearError() {
-        if (_uiState.value.authState is AuthState.Error) {
-            _uiState.value = _uiState.value.copy(authState = AuthState.Idle)
-        }
-    }
-
-    fun logout() {
-        firebaseUserRepository.signOut()
-        _uiState.value = AuthUiState(authState = AuthState.Unauthenticated)
-    }
-
-    fun isLoggedIn(): Boolean {
-        return loginPreference.isLoggedIn
-    }
 }

@@ -1,6 +1,7 @@
 package com.devvikram.striveo.ui.screens.tasks
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -31,6 +32,12 @@ class TaskViewModel @Inject constructor(
     private val roomTaskRepository: RoomTaskRepository
 ) : ViewModel() {
 
+    companion object {
+        private const val TAG = "TaskViewModel"
+    }
+    private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
     // Task creation form states
     private val _title = MutableStateFlow("")
     val title: StateFlow<String> = _title.asStateFlow()
@@ -44,18 +51,11 @@ class TaskViewModel @Inject constructor(
     private val _priority = MutableStateFlow(TaskPriority.MEDIUM)
     val priority: StateFlow<TaskPriority> = _priority.asStateFlow()
 
-
     private val _tags = MutableStateFlow<List<String>>(emptyList())
     val tags: StateFlow<List<String>> = _tags.asStateFlow()
 
     private val _currentTag = MutableStateFlow("")
     val currentTag: StateFlow<String> = _currentTag.asStateFlow()
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _showSuccessMessage = MutableStateFlow(false)
-    val showSuccessMessage: StateFlow<Boolean> = _showSuccessMessage.asStateFlow()
 
     private val _validationErrors = MutableStateFlow<List<String>>(emptyList())
     val validationErrors: StateFlow<List<String>> = _validationErrors.asStateFlow()
@@ -118,11 +118,11 @@ class TaskViewModel @Inject constructor(
 
     fun createTask() {
         if (validateForm()) {
-            _isLoading.value = true
-
+            _uiState.value = UiState.Loading
             viewModelScope.launch {
                 try {
                     val taskId = firebaseFirestore.collection(App.FIREBASE_COLLECTION_TASKS).document().id
+
                     val roomTask = RoomTask(
                         taskId = taskId,
                         title = _title.value.trim(),
@@ -135,25 +135,26 @@ class TaskViewModel @Inject constructor(
                         tags = _tags.value,
                         lastModifiedAt = System.currentTimeMillis(),
                         createdAt = System.currentTimeMillis(),
-                        createdBy = loginPreference.userId
+                        createdBy = loginPreference.getUserId()
                     )
                     roomTaskRepository.insertTask(roomTask)
-                    val result = firebaseTaskRepository.saveTask(ModelMappers.toFirebaseTask(roomTask))
+                    val result =
+                        firebaseTaskRepository.saveTask(ModelMappers.toFirebaseTask(roomTask))
                     result.onFailure {
-                        _isLoading.value = false
+                        _uiState.value = UiState.Error("Failed to create task. Please try again.")
                         _validationErrors.value = listOf("Failed to create task. Please try again.")
                         return@launch
                     }.onSuccess {
-                        _isLoading.value = false
-                        _showSuccessMessage.value = true
-
+                        _uiState.value = UiState.Success("Task created successfully!")
                     }
 
                     // Reset form after successful creation
                     resetForm()
 
                 } catch (e: Exception) {
-                    _isLoading.value = false
+                    e.printStackTrace()
+                    Log.d(TAG, "createTask: Exception ${e.message}")
+                    _uiState.value = UiState.Error("Failed to create task. Please try again.")
                     _validationErrors.value = listOf("Failed to create task. Please try again.")
                 }
             }
@@ -177,7 +178,6 @@ class TaskViewModel @Inject constructor(
     }
 
 
-
     fun resetForm() {
         _title.value = ""
         _description.value = ""
@@ -188,7 +188,13 @@ class TaskViewModel @Inject constructor(
         _validationErrors.value = emptyList()
     }
 
-    fun hideSuccessMessage() {
-        _showSuccessMessage.value = false
+    sealed class UiState {
+        object Idle : UiState()
+        object Loading : UiState()
+        data class Success(val message: String) : UiState()
+        data class Error(val message: String) : UiState()
+
     }
+
+
 }

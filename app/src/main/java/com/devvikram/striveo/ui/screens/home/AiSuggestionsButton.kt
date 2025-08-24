@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -47,12 +48,14 @@ import androidx.compose.ui.unit.dp
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier
             .size(56.dp)
+
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(20.dp),
                 ambientColor = Color(0xFF6366F1).copy(alpha = 0.3f),
                 spotColor = Color(0xFF6366F1).copy(alpha = 0.3f)
-            )
+            ),
+
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

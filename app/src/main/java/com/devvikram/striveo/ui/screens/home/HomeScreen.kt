@@ -48,13 +48,31 @@ fun HomeScreen(
     val navBackStackEntry by homeNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // scroll behavior for collapsible toolbar
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    // Animation for FAB
     val fabVisible by remember {
-        derivedStateOf { currentRoute == Destination.Home.route }
+        derivedStateOf {
+            currentRoute == Destination.Home.route
+        }
     }
+
+    var lastValidRoute by remember { mutableStateOf(Destination.Home.route) }
+
+    LaunchedEffect(currentRoute) {
+        currentRoute?.let { route ->
+            lastValidRoute = route
+        }
+    }
+
+    val fabVisibleStable by remember {
+        derivedStateOf {
+            lastValidRoute == Destination.Home.route
+        }
+    }
+
+    println(
+        "HomeScreen: currentRoute = $currentRoute, fabVisible = $fabVisibleStable"
+    )
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -62,15 +80,19 @@ fun HomeScreen(
             if (currentRoute == Destination.Home.route) {
                 HomeToolbar(
                     greeting = viewModel.greeting,
-                    onProfileClick = { /* Handle profile click */ },
+                    onProfileClick = {
+                        mainNavController.navigate(Destination.Profile.route)
+                    },
                     onNotificationClick = { /* Handle notification click */ },
-                    scrollBehavior = scrollBehavior
+                    scrollBehavior = scrollBehavior,
+                    onLogout = onLogout,
+                    name = viewModel.loginPreference.getUsername()
                 )
             }
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = fabVisible,
+                visible = fabVisibleStable,
                 enter = scaleIn(
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -112,14 +134,13 @@ fun HomeScreen(
                 }
             }
             composable(Destination.Reminders.route) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    RemindersScreen()
-                }
+                RemindersScreen()
+
             }
             composable(Destination.TaskCreation.route) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    TaskCreationScreen()
-                }
+                TaskCreationScreen(
+                    onBackPressed = { homeNavController.popBackStack() }
+                )
             }
         }
     }

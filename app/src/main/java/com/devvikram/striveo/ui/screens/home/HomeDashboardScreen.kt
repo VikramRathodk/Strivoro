@@ -9,8 +9,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.devvikram.striveo.config.constants.LoginPreference
 import com.devvikram.striveo.room.dao.TaskDao
 import com.devvikram.striveo.room.model.RoomTask
 import com.devvikram.striveo.room.repository.RoomTaskRepository
@@ -65,9 +67,14 @@ fun HomeDashboardScreenPreview() {
             kotlinx.coroutines.flow.flowOf(emptyList())
 
         override suspend fun deleteAllTasks() {}
+        override suspend fun deleteTaskById(taskId: String) {
+        }
     }
     val roomTaskRepository = RoomTaskRepository(taskDao)
-    val viewModel = HomeViewModel(roomTaskRepository)
+    val viewModel = HomeViewModel(
+        loginPreference = LoginPreference(LocalContext.current),
+        roomTaskRepository = roomTaskRepository
+    )
     HomeDashboardScreen(
         viewModel = viewModel,
         onTaskClick = {})
