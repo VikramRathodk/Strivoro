@@ -20,6 +20,8 @@ class LoginPreference @Inject constructor(
         private const val REMEMBER_ME = "remember_me"
         private const val LAST_LOGIN_TIME = "last_login_time"
         private const val ONBOARDING_COMPLETED = "onboarding_completed"
+
+        private const val DARK_MODE_ENABLED = "dark_mode_enabled"
     }
 
     // Save login state
@@ -136,6 +138,13 @@ class LoginPreference @Inject constructor(
     fun completeReset() {
         prefs.edit { clear() }
     }
+
+    fun setDarkModeState(value: Boolean) {
+        prefs.edit { putBoolean(DARK_MODE_ENABLED, value) }
+    }
+    fun getDarkModeState(): Boolean {
+        return prefs.getBoolean(DARK_MODE_ENABLED, false)
+    }
 }
 
 // Data class to represent the user's login session
@@ -146,5 +155,5 @@ data class UserData(
     val email: String = "",
     val authToken: String = "",
     val rememberMe: Boolean = false,
-    val lastLoginTime: Long = 0L
+    val lastLoginTime: Long = 0L,
 )

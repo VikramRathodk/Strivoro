@@ -1,5 +1,6 @@
 package com.devvikram.striveo.room.repository
 
+import com.devvikram.striveo.config.constants.AppThemeMode
 import com.devvikram.striveo.room.dao.RoomUserDao
 import com.devvikram.striveo.room.model.RoomUser
 import kotlinx.coroutines.flow.Flow
@@ -50,6 +51,13 @@ class RoomUserRepository @Inject constructor(
 
     suspend fun deleteAllUsers() {
         roomUserDao.deleteAllUsers()
+    }
+
+    suspend fun updateDarkModeEnabled(userId: String,it: AppThemeMode) {
+        roomUserDao.updateDarkModeEnabled(
+            userId = userId,
+            it = it
+        )
     }
 
 

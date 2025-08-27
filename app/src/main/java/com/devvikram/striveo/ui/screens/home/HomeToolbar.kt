@@ -38,9 +38,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
+import com.devvikram.striveo.ui.reuseables.chips.TagChip
 import com.devvikram.striveo.ui.reuseables.dialogs.DialogBuilder
 import com.devvikram.striveo.ui.reuseables.dialogs.ReusableDialog
 import com.devvikram.striveo.ui.reuseables.dialogs.rememberDialogState
@@ -94,7 +96,7 @@ fun HomeToolbar(
                                 modifier = Modifier.padding(start = 4.dp),
                                 maxLines = 1,
                                 softWrap = false,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
 
@@ -110,7 +112,7 @@ fun HomeToolbar(
                             modifier = Modifier.animateContentSize(),
                             maxLines = 1,
                             softWrap = false,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -122,6 +124,14 @@ fun HomeToolbar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(end = 16.dp)
             ) {
+
+                TagChip(
+                    tag = "ADMIN",
+                    onRemove = {},
+                    isSelected = true,
+                    isIconVisible = false
+                )
+
                 // Streak Counter
                 StreakCounter(
                     streakCount = streakCount,

@@ -1,17 +1,17 @@
 package com.devvikram.striveo.ui.main
 
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devvikram.striveo.config.constants.App
+import com.devvikram.striveo.config.constants.AppThemeMode
 import com.devvikram.striveo.config.constants.LoginPreference
 import com.devvikram.striveo.config.mappers.ModelMappers
 import com.devvikram.striveo.firebase.models.FirebaseTask
 import com.devvikram.striveo.firebase.models.MyFirebaseUser
 import com.devvikram.striveo.firebase.repository.FirebaseTaskRepository
 import com.devvikram.striveo.firebase.repository.FirebaseUserRepository
+import com.devvikram.striveo.room.model.RoomUser
 import com.devvikram.striveo.room.repository.RoomTaskRepository
 import com.devvikram.striveo.room.repository.RoomUserRepository
 import com.google.firebase.firestore.DocumentChange
@@ -39,15 +39,35 @@ class AppViewmodel @Inject constructor(
     private val _onboardingState = MutableStateFlow<Boolean>(false)
     val onboardingState: StateFlow<Boolean>  = _onboardingState.asStateFlow()
 
+    private val _appThemeModeState = MutableStateFlow<AppThemeMode>(AppThemeMode.LIGHT)
+    val appThemeModeState: StateFlow<AppThemeMode> = _appThemeModeState.asStateFlow()
+
     private val userCollection = firebaseFirestore.collection(App.FIREBASE_COLLECTION_USERS)
     private val taskCollection = firebaseFirestore.collection(App.FIREBASE_COLLECTION_TASKS)
+
+    //track the current logged user from local room db
+    private val _currentUserState = MutableStateFlow<RoomUser?>(null)
+    val currentUserState: StateFlow<RoomUser?> = _currentUserState.asStateFlow()
+
 
     init {
         _loginState.value = loginPreference.isLoggedIn()
         _onboardingState.value = loginPreference.isOnboardingCompleted()
         listenToContactChanges()
         listenToTaskCollection()
+        if (loginPreference.isLoggedIn()) {
+            viewModelScope.launch {
+                roomUserRepository.getUserByIdFlow(loginPreference.getUserId())
+                    .collect { roomUser ->
+                        _currentUserState.value = roomUser
+                        _appThemeModeState.value = roomUser?.appThemeMode ?: AppThemeMode.SYSTEM
+                    }
+            }
+        }
     }
+
+
+
 
     private fun listenToContactChanges() {
 
@@ -143,5 +163,13 @@ class AppViewmodel @Inject constructor(
         loginPreference.setOnboardingCompleted(false)
         _onboardingState.value = false
     }
+
+
+//    fun toggleDarkModeState(){
+//        viewModelScope.launch {
+//            _darkModeState.value = !_darkModeState.value
+//            loginPreference.setDarkModeState(_darkModeState.value)
+//        }
+//    }
 
 }

@@ -3,6 +3,7 @@ package com.devvikram.striveo.room.dao
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
+import com.devvikram.striveo.config.constants.AppThemeMode
 import com.devvikram.striveo.room.model.RoomUser
 import kotlinx.coroutines.flow.Flow
 
@@ -23,7 +24,7 @@ interface RoomUserDao  {
     suspend fun getAllUsers(): List<RoomUser>
 
     //by id flow
-    @Query("SELECT * FROM users WHERE userId = :userId")
+    @Query("SELECT * FROM users WHERE userId = :userId LIMIT 1")
     fun getUserByIdFlow(userId: String): Flow<RoomUser?>
 
     @Query("SELECT * FROM users WHERE userId = :userId")
@@ -35,6 +36,9 @@ interface RoomUserDao  {
 
     @Query("DELETE FROM users")
     suspend fun deleteAllUsers()
+
+    @Query("UPDATE users SET appThemeMode = :it WHERE userId = :userId")
+    suspend fun updateDarkModeEnabled(userId: String,it: AppThemeMode)
 
 
 }

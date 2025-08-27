@@ -17,7 +17,7 @@ plugins {
 
 android {
     namespace = "com.devvikram.striveo"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.devvikram.striveo"

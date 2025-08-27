@@ -28,6 +28,9 @@ fun AppScreen(
     val isOnboardingComplete by appViewModel.onboardingState.collectAsState()
     val authenticationViewModel: AuthenticationViewModel = hiltViewModel()
 
+//    val isDarkMode by appViewModel.darkModeState.collectAsState()
+
+
     Log.d("AppScreen", "isLoggedIn=$isLoggedIn, isOnboardingComplete=$isOnboardingComplete")
 
     val startDestination = when {
@@ -113,7 +116,7 @@ fun AppScreen(
                 },
                 onLogout = {
                     appViewModel.logout()
-                }
+                },
             )
         }
     }

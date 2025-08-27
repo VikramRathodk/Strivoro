@@ -110,7 +110,8 @@ fun TagsSection(
                     TagChip(
                         tag = tag,
                         onRemove = { onRemoveTag(tag) },
-                        isSelected = true
+                        isSelected = true,
+                        isIconVisible = true
                     )
                 }
             }
@@ -133,7 +134,8 @@ fun TagsSection(
                     TagChip(
                         tag = tag,
                         onRemove = { onAddSuggestedTag(tag) },
-                        isSelected = false
+                        isSelected = false,
+
                     )
                 }
             }
