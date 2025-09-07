@@ -109,7 +109,7 @@ fun TagsSection(
                 items(tags) { tag ->
                     TagChip(
                         tag = tag,
-                        onRemove = { onRemoveTag(tag) },
+                        onClick = { onRemoveTag(tag) },
                         isSelected = true,
                         isIconVisible = true
                     )
@@ -133,7 +133,7 @@ fun TagsSection(
                 items(suggestedTags.filter { !tags.contains(it) }) { tag ->
                     TagChip(
                         tag = tag,
-                        onRemove = { onAddSuggestedTag(tag) },
+                        onClick = { onAddSuggestedTag(tag) },
                         isSelected = false,
 
                     )

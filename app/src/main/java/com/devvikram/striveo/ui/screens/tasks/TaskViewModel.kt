@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.devvikram.striveo.config.constants.App
 import com.devvikram.striveo.config.constants.LoginPreference
 import com.devvikram.striveo.config.enums.TaskPriority
+import com.devvikram.striveo.config.enums.TaskStatus
 import com.devvikram.striveo.config.mappers.ModelMappers
 import com.devvikram.striveo.firebase.repository.FirebaseTaskRepository
 import com.devvikram.striveo.room.model.RoomTask
@@ -132,6 +133,7 @@ class TaskViewModel @Inject constructor(
                         estimatedTime = "",
                         dueDate = "",
                         isCompleted = false,
+                        status = TaskStatus.NOT_STARTED,
                         tags = _tags.value,
                         lastModifiedAt = System.currentTimeMillis(),
                         createdAt = System.currentTimeMillis(),

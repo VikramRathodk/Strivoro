@@ -2,6 +2,7 @@ package com.devvikram.striveo.room.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.devvikram.striveo.config.enums.TaskStatus
 
 @Entity(tableName = "tasks")
 data class RoomTask(
@@ -12,6 +13,7 @@ data class RoomTask(
     val category: String,
     val priority: String,
     val estimatedTime: String,
+    val status: TaskStatus = TaskStatus.NOT_STARTED,
     val dueDate: String,
     val isCompleted: Boolean,
     val tags: List<String> = emptyList(),

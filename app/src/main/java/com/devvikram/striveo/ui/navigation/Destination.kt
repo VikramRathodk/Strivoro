@@ -8,6 +8,8 @@ sealed class Destination(val route: String) {
     object Register : Destination("register")
     object Home : Destination("home")
 
+    object Projects : Destination("projects")
+
     object TaskCreation : Destination("taskCreation")
 
     object TaskDetails : Destination("taskDetails/{taskId}") {

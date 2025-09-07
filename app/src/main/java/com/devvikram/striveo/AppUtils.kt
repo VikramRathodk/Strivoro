@@ -2,8 +2,10 @@ package com.devvikram.striveo
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.text.format.DateFormat
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.Date
 
 class AppUtils {
 
@@ -62,6 +64,17 @@ class AppUtils {
             }
         }
 
+        fun formatDate(timestamp: Long,context: Context): String {
+            val date = Date(timestamp)
+            return DateFormat.getDateFormat(
+                context
+            ).format(date)
+        }
+
+        fun showToast(context: Context, message: String) {
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+
+        }
 
 
     }

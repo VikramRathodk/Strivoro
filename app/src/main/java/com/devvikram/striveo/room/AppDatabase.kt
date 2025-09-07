@@ -7,14 +7,16 @@ import androidx.room.TypeConverters
 import com.devvikram.striveo.room.model.RoomUser
 import com.devvikram.striveo.config.constants.App
 import com.devvikram.striveo.room.converters.Converters
+import com.devvikram.striveo.room.dao.RoomProjectDao
 import com.devvikram.striveo.room.dao.RoomUserDao
 import com.devvikram.striveo.room.dao.TaskDao
+import com.devvikram.striveo.room.model.RoomProject
 import com.devvikram.striveo.room.model.RoomTask
 
 
 @Database(
     entities = [RoomUser::class,
-        RoomTask::class],
+        RoomTask::class, RoomProject::class],
     version = App.DATABASE_CURRENT_VERSION,
     exportSchema = true
 )
@@ -24,5 +26,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun roomUserDao(): RoomUserDao
     abstract fun taskDao(): TaskDao
 
-
+    abstract fun roomProjectDao(): RoomProjectDao
 }

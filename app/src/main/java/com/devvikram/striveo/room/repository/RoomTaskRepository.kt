@@ -1,6 +1,7 @@
 package com.devvikram.striveo.room.repository
 
 
+import com.devvikram.striveo.config.enums.TaskStatus
 import com.devvikram.striveo.room.dao.TaskDao
 import com.devvikram.striveo.room.model.RoomTask
 import kotlinx.coroutines.flow.Flow
@@ -41,5 +42,9 @@ class RoomTaskRepository @Inject constructor(
 
    suspend fun deleteTaskById(taskId: String) {
         taskDao.deleteTaskById(taskId)
+    }
+
+   suspend fun updateTaskStatus(taskId: String, status: TaskStatus) {
+        taskDao.updateTaskStatus(taskId, status)
     }
 }

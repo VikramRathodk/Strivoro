@@ -17,11 +17,18 @@ import com.devvikram.striveo.ui.screens.home.HomeScreen
 import com.devvikram.striveo.ui.screens.onboarding.OnBoardingScreen
 import com.devvikram.striveo.ui.screens.onboarding.OnboardingViewModel
 import com.devvikram.striveo.ui.screens.profile.ProfileScreen
+import com.devvikram.striveo.ui.screens.projects.ProjectScreen
 
 @Composable
 fun AppScreen(
     appViewModel: AppViewmodel
 ) {
+
+    LaunchedEffect(Unit) {
+        appViewModel.listenToContactChanges()
+        appViewModel.listenToTaskCollection()
+        appViewModel.listenToProjectCollection()
+    }
 
     val navController = rememberNavController()
     val isLoggedIn by appViewModel.loginState.collectAsState()
@@ -117,6 +124,13 @@ fun AppScreen(
                 onLogout = {
                     appViewModel.logout()
                 },
+            )
+        }
+        composable(Destination.Projects.route) {
+            ProjectScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
             )
         }
     }

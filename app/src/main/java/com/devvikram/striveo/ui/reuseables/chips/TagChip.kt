@@ -25,12 +25,12 @@ import androidx.compose.ui.unit.sp
 @Composable
  fun TagChip(
     tag: String,
-    onRemove: () -> Unit,
+    onClick: () -> Unit,
     isSelected: Boolean = false,
     isIconVisible: Boolean = false
 ) {
     Card(
-        modifier = Modifier.clickable { onRemove() },
+        modifier = Modifier.clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
                 MaterialTheme.colorScheme.primaryContainer
