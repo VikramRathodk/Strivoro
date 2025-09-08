@@ -53,7 +53,8 @@ fun HomeToolbar(
     scrollBehavior: TopAppBarScrollBehavior,
     onLogout: () -> Unit = {},
     name: String = "User",
-    onProjectClick: () -> Unit
+    onProjectClick: () -> Unit,
+    onModuleClick: () -> Unit
 ) {
     val isLogoutConfirmation = remember { mutableStateOf(false) }
     val confirmDialogState = rememberDialogState()
@@ -121,6 +122,15 @@ fun HomeToolbar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(end = 16.dp)
             ) {
+
+                TagChip(
+                    tag = "MODULES",
+                    onClick = {
+                        onModuleClick()
+                    },
+                    isSelected = true,
+                    isIconVisible = false
+                )
 
                 TagChip(
                     tag = "PROJECTS",
@@ -218,6 +228,8 @@ fun HomeToolbarPreview() {
         onNotificationClick = {},
         scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(),
         onLogout = {},
-        onProjectClick = {}
+        onProjectClick = {},
+        onModuleClick = {}
+
     )
 }

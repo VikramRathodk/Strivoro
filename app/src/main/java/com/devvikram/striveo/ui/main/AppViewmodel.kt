@@ -7,12 +7,14 @@ import com.devvikram.striveo.config.constants.App
 import com.devvikram.striveo.config.constants.AppThemeMode
 import com.devvikram.striveo.config.constants.LoginPreference
 import com.devvikram.striveo.config.mappers.ModelMappers
+import com.devvikram.striveo.firebase.models.FirebaseModule
 import com.devvikram.striveo.firebase.models.FirebaseProject
 import com.devvikram.striveo.firebase.models.FirebaseTask
 import com.devvikram.striveo.firebase.models.MyFirebaseUser
 import com.devvikram.striveo.firebase.repository.FirebaseTaskRepository
 import com.devvikram.striveo.firebase.repository.FirebaseUserRepository
 import com.devvikram.striveo.room.model.RoomUser
+import com.devvikram.striveo.room.repository.RoomModuleRepository
 import com.devvikram.striveo.room.repository.RoomProjectRepository
 import com.devvikram.striveo.room.repository.RoomTaskRepository
 import com.devvikram.striveo.room.repository.RoomUserRepository
@@ -33,7 +35,8 @@ class AppViewmodel @Inject constructor(
     private val firebaseUserRepository: FirebaseUserRepository,
     private val firebaseTaskRepository: FirebaseTaskRepository,
     private val roomTaskRepository: RoomTaskRepository,
-    private val roomProjectRepository: RoomProjectRepository
+    private val roomProjectRepository: RoomProjectRepository,
+    private val roomModuleRepository: RoomModuleRepository
 ) : ViewModel() {
 
     private val _loginState = MutableStateFlow<Boolean>(false)
@@ -47,8 +50,9 @@ class AppViewmodel @Inject constructor(
 
     private val userCollection = firebaseFirestore.collection(App.FIREBASE_COLLECTION_USERS)
     private val taskCollection = firebaseFirestore.collection(App.FIREBASE_COLLECTION_TASKS)
-
     private val projectCollection = firebaseFirestore.collection(App.FIREBASE_COLLECTION_PROJECTS)
+
+    private val moduleCollection = firebaseFirestore.collection(App.FIREBASE_COLLECTION_MODULES)
 
     //track the current logged user from local room db
     private val _currentUserState = MutableStateFlow<RoomUser?>(null)
@@ -58,8 +62,6 @@ class AppViewmodel @Inject constructor(
     init {
         _loginState.value = loginPreference.isLoggedIn()
         _onboardingState.value = loginPreference.isOnboardingCompleted()
-        listenToContactChanges()
-        listenToTaskCollection()
         if (loginPreference.isLoggedIn()) {
             viewModelScope.launch {
                 roomUserRepository.getUserByIdFlow(loginPreference.getUserId())
@@ -69,7 +71,10 @@ class AppViewmodel @Inject constructor(
                     }
             }
         }
+        listenToContactChanges()
+        listenToTaskCollection()
         listenToProjectCollection()
+        listenToModuleCollection()
     }
 
 
@@ -158,7 +163,7 @@ class AppViewmodel @Inject constructor(
             }
     }
 
-     fun listenToProjectCollection() {
+    fun listenToProjectCollection() {
         projectCollection.addSnapshotListener { snapshot, error ->
             if (error != null) {
                 // Handle error
@@ -179,6 +184,7 @@ class AppViewmodel @Inject constructor(
                                     )
                                 )
                             }
+
                             DocumentChange.Type.MODIFIED -> {
                                 roomProjectRepository.addOrUpdateProject(
                                     ModelMappers.mapToRoomProject(
@@ -186,6 +192,7 @@ class AppViewmodel @Inject constructor(
                                     )
                                 )
                             }
+
                             DocumentChange.Type.REMOVED -> {
                                 roomProjectRepository.deleteProjectById(project.projectId)
                             }
@@ -195,6 +202,49 @@ class AppViewmodel @Inject constructor(
             }
         }
 
+    }
+
+
+    fun listenToModuleCollection() {
+        moduleCollection.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                // Handle error
+                return@addSnapshotListener
+            }
+
+            viewModelScope.launch {
+                if (snapshot != null) {
+                    for (documentChange in snapshot.documentChanges) {
+                        val document = documentChange.document
+                        val module = document.toObject(FirebaseModule::class.java)
+                        val changeType = documentChange.type
+
+                        when (changeType) {
+                            DocumentChange.Type.ADDED -> {
+                                roomModuleRepository.addOrUpdateModule(
+                                    ModelMappers.mapToRoomModule(
+                                        module = module
+                                    )
+                                )
+                            }
+
+                            DocumentChange.Type.MODIFIED -> {
+                                roomModuleRepository.addOrUpdateModule(
+                                    ModelMappers.mapToRoomModule(
+                                        module = module
+                                    )
+                                )
+                            }
+
+                            DocumentChange.Type.REMOVED -> {
+                                roomModuleRepository.deleteModuleById(module.moduleId)
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
     }
 
 

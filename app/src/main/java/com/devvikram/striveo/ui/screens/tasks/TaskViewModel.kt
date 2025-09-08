@@ -11,13 +11,16 @@ import com.devvikram.striveo.config.enums.TaskPriority
 import com.devvikram.striveo.config.enums.TaskStatus
 import com.devvikram.striveo.config.mappers.ModelMappers
 import com.devvikram.striveo.firebase.repository.FirebaseTaskRepository
+import com.devvikram.striveo.room.model.RoomProject
 import com.devvikram.striveo.room.model.RoomTask
+import com.devvikram.striveo.room.repository.RoomProjectRepository
 import com.devvikram.striveo.room.repository.RoomTaskRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -30,7 +33,8 @@ class TaskViewModel @Inject constructor(
     private val loginPreference: LoginPreference,
     private val firebaseFirestore: FirebaseFirestore,
     private val firebaseTaskRepository: FirebaseTaskRepository,
-    private val roomTaskRepository: RoomTaskRepository
+    private val roomTaskRepository: RoomTaskRepository,
+    private val roomProjectRepository: RoomProjectRepository
 ) : ViewModel() {
 
     companion object {
@@ -60,6 +64,28 @@ class TaskViewModel @Inject constructor(
 
     private val _validationErrors = MutableStateFlow<List<String>>(emptyList())
     val validationErrors: StateFlow<List<String>> = _validationErrors.asStateFlow()
+
+    private val _projects = MutableStateFlow<List<RoomProject>>(emptyList())
+    val projects: StateFlow<List<RoomProject>> = _projects.asStateFlow()
+
+    private val _selectedProject = MutableStateFlow<RoomProject?>(null)
+    val selectedProject: StateFlow<RoomProject?> = _selectedProject.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            roomProjectRepository.getAllProjectsFlow().collectLatest { list ->
+                _projects.value = list
+            }
+        }
+    }
+
+    fun getProjectList (): List<RoomProject> {
+        return projects.value
+    }
+    fun setSelectedProject(project: RoomProject?) {
+        _selectedProject.value = project
+    }
+
 
     // Predefined categories and suggestions
     val predefinedCategories = listOf(
@@ -137,7 +163,8 @@ class TaskViewModel @Inject constructor(
                         tags = _tags.value,
                         lastModifiedAt = System.currentTimeMillis(),
                         createdAt = System.currentTimeMillis(),
-                        createdBy = loginPreference.getUserId()
+                        createdBy = loginPreference.getUserId(),
+                        projectId = _selectedProject.value?.projectId ?: ""
                     )
                     roomTaskRepository.insertTask(roomTask)
                     val result =

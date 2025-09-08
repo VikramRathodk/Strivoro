@@ -36,7 +36,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,12 +52,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devvikram.striveo.config.enums.TaskFilter
-import com.devvikram.striveo.config.enums.TaskPriority
 import com.devvikram.striveo.config.enums.TaskStatus
 import com.devvikram.striveo.room.model.RoomTask
 import com.devvikram.striveo.ui.QuickAction
 import com.devvikram.striveo.ui.TaskStats
-import com.devvikram.striveo.ui.reuseables.common.TaskItem
+import com.devvikram.striveo.ui.reuseables.common.TaskItemCard
 
 @Composable
 fun ProgressSection(stats: TaskStats) {
@@ -665,7 +663,7 @@ fun TasksSection(
         } else {
             roomTasks.forEach { task ->
 
-                TaskItem(
+                TaskItemCard(
                     roomTask = task,
                     onToggle = { onTaskToggle(task.taskId) },
                     onClick = { onTaskClick(task.taskId) },

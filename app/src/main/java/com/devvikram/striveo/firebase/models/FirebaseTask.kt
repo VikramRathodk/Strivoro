@@ -42,5 +42,8 @@ data class FirebaseTask(
     val lastModifiedAt: Long = System.currentTimeMillis(),
 
     @PropertyName("createdBy")
-    val createdBy: String = ""
+    val createdBy: String = "",
+
+    @PropertyName("projectId")
+    val projectId: String = "",
 )

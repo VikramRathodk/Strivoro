@@ -85,6 +85,9 @@ fun HomeScreen(
                     name = viewModel.loginPreference.getUsername(),
                     onProjectClick = {
                         mainNavController.navigate(Destination.Projects.route)
+                    },
+                    onModuleClick = {
+                        mainNavController.navigate(Destination.Modules.route)
                     }
                 )
             }

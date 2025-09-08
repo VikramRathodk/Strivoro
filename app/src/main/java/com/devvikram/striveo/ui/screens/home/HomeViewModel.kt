@@ -9,11 +9,13 @@ import com.devvikram.striveo.config.enums.TaskPriority
 import com.devvikram.striveo.config.enums.TaskStatus
 import com.devvikram.striveo.firebase.repository.FirebaseTaskRepository
 import com.devvikram.striveo.room.model.RoomTask
+import com.devvikram.striveo.room.repository.RoomProjectRepository
 import com.devvikram.striveo.room.repository.RoomTaskRepository
 import com.devvikram.striveo.ui.TaskStats
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +24,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -32,7 +36,8 @@ class HomeViewModel @Inject constructor(
     val loginPreference: LoginPreference,
     private val roomTaskRepository: RoomTaskRepository,
     private val firebaseFirestore: FirebaseFirestore,
-    private val firebaseTaskRepository: FirebaseTaskRepository
+    private val firebaseTaskRepository: FirebaseTaskRepository,
+    private val roomProjectRepository: RoomProjectRepository
 
 ) : ViewModel() {
 
@@ -89,16 +94,16 @@ class HomeViewModel @Inject constructor(
         return when (filter) {
             TaskFilter.ALL -> taskList
             TaskFilter.TODAY -> taskList.filter { task ->
-                isTaskForToday(task.dueDate)
+                isTaskForToday(task.createdAt)
             }
 
             TaskFilter.UPCOMING -> taskList.filter { task ->
-                isTaskUpcoming(task.dueDate)
+                isTaskUpcoming(task.createdAt)
             }
 
             TaskFilter.COMPLETED -> taskList.filter { it.isCompleted }
             TaskFilter.OVERDUE -> taskList.filter { task ->
-                !task.isCompleted && isTaskOverdue(task.dueDate)
+                !task.isCompleted && isTaskOverdue(task.createdAt)
             }
         }
     }
@@ -106,7 +111,7 @@ class HomeViewModel @Inject constructor(
     private fun calculateTaskStats(taskList: List<RoomTask>): TaskStats {
         val completedCount = taskList.count { it.isCompleted }
         val pendingCount = taskList.count { !it.isCompleted }
-        val overdueCount = taskList.count { !it.isCompleted && isTaskOverdue(it.dueDate) }
+        val overdueCount = taskList.count { !it.isCompleted && isTaskOverdue(it.createdAt) }
 
         val productivity = if (taskList.isEmpty()) 0 else (completedCount * 100) / taskList.size
 
@@ -123,78 +128,60 @@ class HomeViewModel @Inject constructor(
 
     private fun calculateFocusTime(taskList: List<RoomTask>): String {
         val completedTasksToday = taskList.count {
-            it.isCompleted && isTaskForToday(it.dueDate)
+            it.isCompleted && isTaskForToday(it.createdAt)
         }
         val estimatedHours = completedTasksToday * 0.5
         return String.format("%.1fh", estimatedHours)
     }
 
     private fun calculateWeeklyCompletion(taskList: List<RoomTask>): Int {
-        val thisWeekTasks = taskList.filter { isTaskThisWeek(it.dueDate) }
+        val thisWeekTasks = taskList.filter { isTaskThisWeek(it.createdAt) }
         val completedThisWeek = thisWeekTasks.count { it.isCompleted }
 
         return if (thisWeekTasks.isEmpty()) 0
         else (completedThisWeek * 100) / thisWeekTasks.size
     }
 
-    private fun isTaskForToday(dueDate: String): Boolean {
-        return dueDate == "Today" ||
-                dueDate.contains("AM") ||
-                dueDate.contains("PM") ||
-                isToday(dueDate)
+    private fun isTaskForToday(timeStamp: Long): Boolean {
+        val calTask = Calendar.getInstance().apply { timeInMillis = timeStamp }
+        val calToday = Calendar.getInstance()
+
+        return calTask.get(Calendar.YEAR) == calToday.get(Calendar.YEAR) &&
+                calTask.get(Calendar.DAY_OF_YEAR) == calToday.get(Calendar.DAY_OF_YEAR)
     }
 
-    private fun isTaskUpcoming(dueDate: String): Boolean {
-        return dueDate == "Tomorrow" ||
-                dueDate == "This Week" ||
-                isFutureDate(dueDate)
+    private fun isTaskUpcoming(dueDate: Long): Boolean {
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        return dueDate > today
     }
 
-    private fun isTaskOverdue(dueDate: String): Boolean {
-        return dueDate == "Yesterday" || isPastDate(dueDate)
+    private fun isTaskOverdue(dueDate: Long): Boolean {
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+
+        return dueDate < today
     }
 
-    private fun isTaskThisWeek(dueDate: String): Boolean {
-        // Implement logic to check if task is within current week
-        return dueDate == "This Week" ||
-                dueDate == "Today" ||
-                dueDate == "Tomorrow" ||
-                dueDate == "Yesterday"
-    }
+    private fun isTaskThisWeek(timeStamp: Long): Boolean {
+        val cal = Calendar.getInstance()
+        val weekOfYear = cal.get(Calendar.WEEK_OF_YEAR)
+        val year = cal.get(Calendar.YEAR)
 
-    // Helper methods for date checking - you can enhance these based on your date format
-    private fun isToday(dateString: String): Boolean {
-        return try {
-            val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val today = formatter.format(Date())
-            dateString == today
-        } catch (e: Exception) {
-            false
-        }
-    }
+        val calTask = Calendar.getInstance().apply { timeInMillis = timeStamp }
 
-    private fun isFutureDate(dateString: String): Boolean {
-        return try {
-            val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val date = formatter.parse(dateString)
-            val today = Date()
-            date?.after(today) == true
-        } catch (e: Exception) {
-            false
-        }
+        return calTask.get(Calendar.WEEK_OF_YEAR) == weekOfYear &&
+                calTask.get(Calendar.YEAR) == year
     }
-
-    private fun isPastDate(dateString: String): Boolean {
-        return try {
-            val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val date = formatter.parse(dateString)
-            val today = Date()
-            date?.before(today) == true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
     private fun getTimeBasedGreeting(): String {
         val currentTime = SimpleDateFormat("HH", Locale.getDefault()).format(Date()).toInt()
         return when {
@@ -279,6 +266,13 @@ class HomeViewModel @Inject constructor(
             )
         }
     }
+
+    fun getProjectNameFlow(projectId: String): Flow<String> {
+        return roomProjectRepository.getProjectByIdFlow(projectId)
+            .map { it?.projectName ?: "" }
+    }
+
+
 
 
     sealed class TaskUpdateState {

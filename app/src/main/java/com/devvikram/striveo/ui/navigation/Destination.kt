@@ -9,6 +9,7 @@ sealed class Destination(val route: String) {
     object Home : Destination("home")
 
     object Projects : Destination("projects")
+    object Modules : Destination("Modules")
 
     object TaskCreation : Destination("taskCreation")
 

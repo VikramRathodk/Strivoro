@@ -1,6 +1,7 @@
 package com.devvikram.striveo.ui.screens.tasks
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,12 +14,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -40,6 +43,9 @@ fun TaskCreationScreen(
     val tags by viewModel.tags.collectAsState()
     val currentTag by viewModel.currentTag.collectAsState()
     val validationErrors by viewModel.validationErrors.collectAsState()
+    val projects by viewModel.projects.collectAsState()
+    val selectedProject by viewModel.selectedProject.collectAsState()
+    var isProjectDropdownExpanded by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
 
@@ -211,6 +217,150 @@ fun TaskCreationScreen(
                             }
                         }
                     }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                val projectList = projects
+                // Project Selection Dropdown
+                if (projectList.isNotEmpty()) {
+                    Text(
+                        text = "Project",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Box {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isProjectDropdownExpanded = !isProjectDropdownExpanded },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Folder,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = selectedProject?.projectName ?: "Select a project",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = if (selectedProject != null) FontWeight.Medium else FontWeight.Normal,
+                                            color = if (selectedProject != null)
+                                                MaterialTheme.colorScheme.onSurface
+                                            else
+                                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+
+                                        if (selectedProject?.description?.isNotBlank() == true) {
+                                            Text(
+                                                text = selectedProject!!.description,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "Dropdown arrow",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.rotate(if (isProjectDropdownExpanded) 180f else 0f)
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = isProjectDropdownExpanded,
+                            onDismissRequest = { isProjectDropdownExpanded = false },
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp)
+                        ) {
+                            projectList.forEachIndexed { index, project ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text(
+                                                    text = project.projectName,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                if (project.description.isNotBlank()) {
+                                                    Text(
+                                                        text = project.description,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 2,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+
+                                            if (selectedProject?.projectId == project.projectId) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = "Selected",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.setSelectedProject(project)
+                                        isProjectDropdownExpanded = false
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                if (index < projectList.size - 1) {
+                                    HorizontalDivider(
+                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                        thickness = 0.5.dp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
 

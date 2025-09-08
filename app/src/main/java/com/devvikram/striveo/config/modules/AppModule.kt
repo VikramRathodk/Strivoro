@@ -4,13 +4,16 @@ import android.content.Context
 import androidx.room.Room
 import com.devvikram.striveo.config.constants.App
 import com.devvikram.striveo.config.constants.LoginPreference
+import com.devvikram.striveo.firebase.repository.FirebaseModuleRepository
 import com.devvikram.striveo.firebase.repository.FirebaseProjectRepository
 import com.devvikram.striveo.firebase.repository.FirebaseTaskRepository
 import com.devvikram.striveo.firebase.repository.FirebaseUserRepository
 import com.devvikram.striveo.room.AppDatabase
+import com.devvikram.striveo.room.dao.RoomModuleDao
 import com.devvikram.striveo.room.dao.RoomProjectDao
 import com.devvikram.striveo.room.dao.RoomUserDao
 import com.devvikram.striveo.room.dao.TaskDao
+import com.devvikram.striveo.room.repository.RoomModuleRepository
 import com.devvikram.striveo.room.repository.RoomProjectRepository
 import com.devvikram.striveo.room.repository.RoomTaskRepository
 import com.devvikram.striveo.room.repository.RoomUserRepository
@@ -96,6 +99,21 @@ object AppModule {
     fun provideFirebaseProjectRepository(firestore: FirebaseFirestore) = FirebaseProjectRepository(
         firebaseFirestore = firestore
     )
+
+    @Provides
+    fun provideRoomModuleDao(db: AppDatabase) = db.roomModuleDao()
+
+    @Provides
+    fun provideRoomModuleRepository(roomModuleDao: RoomModuleDao) = RoomModuleRepository(
+        roomModuleDao = roomModuleDao
+    )
+
+    @Provides
+    fun provideFirebaseModuleRepository(@ApplicationContext context: Context, firestore: FirebaseFirestore, loginPreference: LoginPreference) = FirebaseModuleRepository(
+        firebaseFirestore = firestore,
+        loginPreference = loginPreference
+    )
+
 
 
 }

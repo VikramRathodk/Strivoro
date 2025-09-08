@@ -112,7 +112,7 @@ fun ProjectScreen(
 
     // Add Project Dialog
     if (showAddProjectDialog) {
-        AddProjectDialog(
+        AddProjectBottomSheet(
             viewModel = viewModel,
             onDismiss = { viewModel.hideAddProjectDialog() }
         )

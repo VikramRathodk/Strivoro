@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -55,7 +54,7 @@ import com.devvikram.striveo.room.model.RoomTask
 import com.devvikram.striveo.ui.screens.home.HomeViewModel
 
 @Composable
-fun TaskItem(
+fun TaskItemCard(
     roomTask: RoomTask,
     onToggle: () -> Unit,
     onClick: () -> Unit,
@@ -367,6 +366,37 @@ fun TaskItem(
                     }
                 }
             }
+            // Project chip
+            val projectName by viewModel.getProjectNameFlow(roomTask.projectId)
+                .collectAsState(initial = "")
+
+            if (projectName.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Project:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        tonalElevation = 2.dp
+                    ) {
+                        Text(
+                            text = projectName,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
+            }
+
+
+
 
             // Time and Due Date (only if present)
             val hasTimeInfo = roomTask.estimatedTime.isNotEmpty() || roomTask.dueDate.isNotEmpty()

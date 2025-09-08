@@ -14,6 +14,7 @@ import com.devvikram.striveo.ui.screens.authantication.AuthenticationViewModel
 import com.devvikram.striveo.ui.screens.authantication.login.LoginScreen
 import com.devvikram.striveo.ui.screens.authantication.register.RegistrationScreen
 import com.devvikram.striveo.ui.screens.home.HomeScreen
+import com.devvikram.striveo.ui.screens.modules.ModuleScreen
 import com.devvikram.striveo.ui.screens.onboarding.OnBoardingScreen
 import com.devvikram.striveo.ui.screens.onboarding.OnboardingViewModel
 import com.devvikram.striveo.ui.screens.profile.ProfileScreen
@@ -28,6 +29,7 @@ fun AppScreen(
         appViewModel.listenToContactChanges()
         appViewModel.listenToTaskCollection()
         appViewModel.listenToProjectCollection()
+        appViewModel.listenToModuleCollection()
     }
 
     val navController = rememberNavController()
@@ -128,6 +130,13 @@ fun AppScreen(
         }
         composable(Destination.Projects.route) {
             ProjectScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(Destination.Modules.route) {
+            ModuleScreen(
                 onBackClick = {
                     navController.popBackStack()
                 }
