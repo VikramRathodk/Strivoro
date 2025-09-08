@@ -14,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +70,7 @@ fun HomeScreen(
     println(
         "HomeScreen: currentRoute = $currentRoute, fabVisible = $fabVisibleStable"
     )
+    val streakCountState = viewModel.streakCountState.collectAsState()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -88,7 +90,9 @@ fun HomeScreen(
                     },
                     onModuleClick = {
                         mainNavController.navigate(Destination.Modules.route)
-                    }
+                    },
+                    streakCountState = streakCountState,
+
                 )
             }
         },

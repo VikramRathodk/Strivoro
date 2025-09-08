@@ -33,8 +33,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun StreakCounter(
-    streakCount: Int,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    streakCount: Int = 0,
 ) {
     // Animation for streak counter
     val animatedCount by animateIntAsState(

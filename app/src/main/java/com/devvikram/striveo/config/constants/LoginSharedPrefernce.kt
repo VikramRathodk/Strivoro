@@ -22,6 +22,9 @@ class LoginPreference @Inject constructor(
         private const val ONBOARDING_COMPLETED = "onboarding_completed"
 
         private const val DARK_MODE_ENABLED = "dark_mode_enabled"
+        private const val LAST_ACTIVE_DATE = "last_active_date"
+        private const val STREAK_COUNT = "streak_count"
+
     }
 
     // Save login state
@@ -144,6 +147,20 @@ class LoginPreference @Inject constructor(
     }
     fun getDarkModeState(): Boolean {
         return prefs.getBoolean(DARK_MODE_ENABLED, false)
+    }
+
+    fun setLastActiveDate(today: String) {
+        prefs.edit { putString(LAST_ACTIVE_DATE, today) }
+
+    }
+    fun getLastActiveDate(): String {
+        return prefs.getString(LAST_ACTIVE_DATE, "") ?: ""
+    }
+    fun setStreakCount(value: Int) {
+        prefs.edit { putInt(STREAK_COUNT, value) }
+    }
+    fun getStreakCount(): Int {
+        return prefs.getInt(STREAK_COUNT, 0)
     }
 }
 

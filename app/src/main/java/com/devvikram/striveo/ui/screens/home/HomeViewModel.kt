@@ -54,6 +54,45 @@ class HomeViewModel @Inject constructor(
     private val _taskUpdateStates = mutableStateMapOf<String, TaskUpdateState>()
     val taskUpdateStates: Map<String, TaskUpdateState> = _taskUpdateStates
 
+    private val _streakCountState = MutableStateFlow(0)
+    val streakCountState: StateFlow<Int> = _streakCountState.asStateFlow()
+
+    init {
+        updateStreak()
+    }
+
+
+    fun updateStreak() {
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val lastActive = loginPreference.getLastActiveDate()
+        var currentStreak = loginPreference.getStreakCount()
+
+        when (lastActive) {
+            today -> {
+                // Already counted today → do nothing
+            }
+            getYesterdayDate() -> {
+                // Consecutive day → increase streak
+                currentStreak += 1
+            }
+            else -> {
+                // Gap → reset streak
+                currentStreak = 1
+            }
+        }
+
+        loginPreference.setLastActiveDate(today)
+        loginPreference.setStreakCount(currentStreak)
+        _streakCountState.value = currentStreak
+    }
+
+    private fun getYesterdayDate(): String {
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DATE, -1)
+        return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(calendar.time)
+    }
+
+
     fun getTaskUpdateState(taskId: String): TaskUpdateState {
         return _taskUpdateStates[taskId] ?: TaskUpdateState.Idle
     }

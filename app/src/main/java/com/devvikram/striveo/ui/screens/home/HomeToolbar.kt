@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -46,7 +47,6 @@ import com.devvikram.striveo.ui.reuseables.dialogs.rememberDialogState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeToolbar(
-    streakCount: Int = 10,
     greeting: String,
     onProfileClick: () -> Unit,
     onNotificationClick: () -> Unit,
@@ -54,7 +54,8 @@ fun HomeToolbar(
     onLogout: () -> Unit = {},
     name: String = "User",
     onProjectClick: () -> Unit,
-    onModuleClick: () -> Unit
+    onModuleClick: () -> Unit,
+    streakCountState: State<Int>
 ) {
     val isLogoutConfirmation = remember { mutableStateOf(false) }
     val confirmDialogState = rememberDialogState()
@@ -79,7 +80,7 @@ fun HomeToolbar(
                     ) {
                         Row {
                             Text(
-                                text = "${greeting}," ,
+                                text = "${greeting},",
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
                                 fontWeight = FontWeight.Medium,
@@ -143,7 +144,7 @@ fun HomeToolbar(
 
                 // Streak Counter
                 StreakCounter(
-                    streakCount = streakCount,
+                    streakCount = streakCountState.value,
                     modifier = Modifier.animateContentSize()
                 )
 
@@ -199,7 +200,7 @@ fun HomeToolbar(
         )
     )
 
-    if(isLogoutConfirmation.value){
+    if (isLogoutConfirmation.value) {
         confirmDialogState.show()
     }
     ReusableDialog(
@@ -227,9 +228,8 @@ fun HomeToolbarPreview() {
         onProfileClick = {},
         onNotificationClick = {},
         scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(),
-        onLogout = {},
         onProjectClick = {},
-        onModuleClick = {}
-
+        onModuleClick = {},
+        streakCountState = remember { mutableStateOf(0) }
     )
 }
