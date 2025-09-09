@@ -46,4 +46,7 @@ data class FirebaseTask(
 
     @PropertyName("projectId")
     val projectId: String = "",
+
+    @PropertyName("moduleId")
+    val moduleId: String = ""
 )

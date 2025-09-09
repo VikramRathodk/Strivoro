@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
 import com.devvikram.striveo.room.model.RoomModule
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RoomModuleDao {
@@ -38,7 +39,7 @@ interface RoomModuleDao {
     fun getModulesByProjectIdFlow(projectId: String): kotlinx.coroutines.flow.Flow<List<RoomModule>>
 
     @Query("SELECT * FROM modules")
-    fun getAllModulesFlow(): kotlinx.coroutines.flow.Flow<List<RoomModule>>
+    fun getAllModulesFlow(): Flow<List<RoomModule>>
 
 
 

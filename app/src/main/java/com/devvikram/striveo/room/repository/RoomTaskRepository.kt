@@ -47,4 +47,8 @@ class RoomTaskRepository @Inject constructor(
    suspend fun updateTaskStatus(taskId: String, status: TaskStatus) {
         taskDao.updateTaskStatus(taskId, status)
     }
+
+    fun getTaskByIdFlow(taskId: String): Flow<RoomTask?> {
+        return taskDao.getTaskByIdFlow(taskId)
+    }
 }

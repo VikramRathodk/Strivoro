@@ -1,6 +1,7 @@
 package com.devvikram.striveo.ui.screens.tasks
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 
 import com.devvikram.striveo.ui.reuseables.TextFields
+import com.devvikram.striveo.ui.reuseables.dropdowns.ReusableDropdown
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,15 +49,20 @@ fun TaskCreationScreen(
     val selectedProject by viewModel.selectedProject.collectAsState()
     var isProjectDropdownExpanded by remember { mutableStateOf(false) }
 
+    val modules by viewModel.modules.collectAsState()
+    val selectedModule by viewModel.selectedModule.collectAsState()
+    var isModuleDropdownExpanded by remember { mutableStateOf(false) }
+
     val focusManager = LocalFocusManager.current
 
     // Handle UI state changes
     LaunchedEffect(uiState) {
         when (uiState) {
             is TaskViewModel.UiState.Success -> {
-                kotlinx.coroutines.delay(1500)
+                kotlinx.coroutines.delay(500)
                 onBackPressed()
             }
+
             else -> {}
         }
     }
@@ -79,7 +86,7 @@ fun TaskCreationScreen(
                         .padding(horizontal = 4.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
 
-                ) {
+                    ) {
                     IconButton(onClick = {
                         onBackPressed()
                     }) {
@@ -152,6 +159,7 @@ fun TaskCreationScreen(
                         }
                     }
                 }
+
                 is TaskViewModel.UiState.Error -> {
                     item {
                         Card(
@@ -182,6 +190,7 @@ fun TaskCreationScreen(
                         }
                     }
                 }
+
                 else -> {}
             }
 
@@ -220,146 +229,43 @@ fun TaskCreationScreen(
                 }
             }
 
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                val projectList = projects
-                // Project Selection Dropdown
-                if (projectList.isNotEmpty()) {
-                    Text(
-                        text = "Project",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(bottom = 8.dp)
+            // Project Selection
+            if (projects.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ReusableDropdown(
+                        label = "Project",
+                        items = projects,
+                        selectedItem = selectedProject,
+                        placeholder = "Select a project",
+                        leadingIcon = Icons.Outlined.Folder,
+                        isExpanded = isProjectDropdownExpanded,
+                        onExpandedChange = { isProjectDropdownExpanded = it },
+                        onItemSelected = viewModel::setSelectedProject,
+                        getItemTitle = { it.projectName },
+                        getItemDescription = { it.description },
+                        getItemId = { it.projectId }
                     )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+            }
 
-                    Box {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { isProjectDropdownExpanded = !isProjectDropdownExpanded },
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Folder,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.width(12.dp))
-
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = selectedProject?.projectName ?: "Select a project",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = if (selectedProject != null) FontWeight.Medium else FontWeight.Normal,
-                                            color = if (selectedProject != null)
-                                                MaterialTheme.colorScheme.onSurface
-                                            else
-                                                MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-
-                                        if (selectedProject?.description?.isNotBlank() == true) {
-                                            Text(
-                                                text = selectedProject!!.description,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Icon(
-                                    imageVector = Icons.Default.ArrowDropDown,
-                                    contentDescription = "Dropdown arrow",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.rotate(if (isProjectDropdownExpanded) 180f else 0f)
-                                )
-                            }
-                        }
-
-                        DropdownMenu(
-                            expanded = isProjectDropdownExpanded,
-                            onDismissRequest = { isProjectDropdownExpanded = false },
-                            modifier = Modifier
-                                .padding(horizontal = 8.dp)
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp)
-                        ) {
-                            projectList.forEachIndexed { index, project ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Column(
-                                                modifier = Modifier.weight(1f)
-                                            ) {
-                                                Text(
-                                                    text = project.projectName,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = MaterialTheme.colorScheme.onSurface
-                                                )
-                                                if (project.description.isNotBlank()) {
-                                                    Text(
-                                                        text = project.description,
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        maxLines = 2,
-                                                        overflow = TextOverflow.Ellipsis
-                                                    )
-                                                }
-                                            }
-
-                                            if (selectedProject?.projectId == project.projectId) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Check,
-                                                    contentDescription = "Selected",
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                            }
-                                        }
-                                    },
-                                    onClick = {
-                                        viewModel.setSelectedProject(project)
-                                        isProjectDropdownExpanded = false
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-
-                                if (index < projectList.size - 1) {
-                                    HorizontalDivider(
-                                        color = MaterialTheme.colorScheme.surfaceVariant,
-                                        thickness = 0.5.dp
-                                    )
-                                }
-                            }
-                        }
-                    }
-
+            // Module Selection
+            if (modules.isNotEmpty()) {
+                item {
+                    ReusableDropdown(
+                        label = "Module",
+                        items = modules,
+                        selectedItem = selectedModule,
+                        placeholder = "Select a Module",
+                        leadingIcon = Icons.Outlined.ViewModule,
+                        isExpanded = isModuleDropdownExpanded,
+                        onExpandedChange = { isModuleDropdownExpanded = it },
+                        onItemSelected = viewModel::setSelectedModule,
+                        getItemTitle = { it.title },
+                        getItemDescription = { it.description },
+                        getItemId = { it.moduleId }
+                    )
                     Spacer(modifier = Modifier.height(24.dp))
                 }
             }
@@ -384,16 +290,39 @@ fun TaskCreationScreen(
                 )
             }
 
-            // Description Input
+            // Description Input with Character Count and 255 Character Limit
             item {
-                TextFields.CommonTextField(
-                    value = description,
-                    onValueChange = viewModel::updateDescription,
-                    label = "Description",
-                    placeholder = "Add more details...",
-                    minLines = 3,
-                    maxLines = 5
-                )
+                Column {
+                    TextFields.CommonTextField(
+                        value = description,
+                        onValueChange = { newValue ->
+                            if (newValue.length <= 255) {
+                                viewModel.updateDescription(newValue)
+                            }
+                        },
+                        label = "Description",
+                        placeholder = "Add more details...",
+                        minLines = 3,
+                        maxLines = 5,
+                        modifier = Modifier
+                            .fillMaxWidth()
+
+                    )
+
+                    // Character count display
+                    Text(
+                        text = "${description.length}/255",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (description.length > 240) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(top = 4.dp)
+                    )
+                }
             }
 
             // Category & Priority Row
@@ -471,6 +400,7 @@ fun TaskCreationScreen(
                                     fontWeight = FontWeight.Medium
                                 )
                             }
+
                             is TaskViewModel.UiState.Success -> {
                                 Icon(
                                     Icons.Default.CheckCircle,
@@ -484,6 +414,7 @@ fun TaskCreationScreen(
                                     fontWeight = FontWeight.Medium
                                 )
                             }
+
                             else -> {
                                 Icon(
                                     Icons.Default.Add,

@@ -19,6 +19,8 @@ import com.devvikram.striveo.ui.screens.onboarding.OnBoardingScreen
 import com.devvikram.striveo.ui.screens.onboarding.OnboardingViewModel
 import com.devvikram.striveo.ui.screens.profile.ProfileScreen
 import com.devvikram.striveo.ui.screens.projects.ProjectScreen
+import com.devvikram.striveo.ui.screens.tasks.details.TaskDetailsScreen
+import com.devvikram.striveo.ui.screens.tasks.details.TaskDetailsViewModel
 
 @Composable
 fun AppScreen(
@@ -140,6 +142,15 @@ fun AppScreen(
                 onBackClick = {
                     navController.popBackStack()
                 }
+            )
+        }
+        composable(Destination.TaskDetails.route) {
+            val taskId = it.arguments?.getString("taskId")
+            val taskDetailsViewModel = hiltViewModel<TaskDetailsViewModel>()
+            taskDetailsViewModel.setTaskId(taskId)
+            TaskDetailsScreen(
+                viewModel = taskDetailsViewModel,
+                onBackPressed = { navController.popBackStack() }
             )
         }
     }

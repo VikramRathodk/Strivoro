@@ -11,8 +11,10 @@ import com.devvikram.striveo.config.enums.TaskPriority
 import com.devvikram.striveo.config.enums.TaskStatus
 import com.devvikram.striveo.config.mappers.ModelMappers
 import com.devvikram.striveo.firebase.repository.FirebaseTaskRepository
+import com.devvikram.striveo.room.model.RoomModule
 import com.devvikram.striveo.room.model.RoomProject
 import com.devvikram.striveo.room.model.RoomTask
+import com.devvikram.striveo.room.repository.RoomModuleRepository
 import com.devvikram.striveo.room.repository.RoomProjectRepository
 import com.devvikram.striveo.room.repository.RoomTaskRepository
 import com.google.firebase.firestore.FirebaseFirestore
@@ -34,7 +36,8 @@ class TaskViewModel @Inject constructor(
     private val firebaseFirestore: FirebaseFirestore,
     private val firebaseTaskRepository: FirebaseTaskRepository,
     private val roomTaskRepository: RoomTaskRepository,
-    private val roomProjectRepository: RoomProjectRepository
+    private val roomProjectRepository: RoomProjectRepository,
+    private val roomModuleRepository: RoomModuleRepository
 ) : ViewModel() {
 
     companion object {
@@ -71,10 +74,22 @@ class TaskViewModel @Inject constructor(
     private val _selectedProject = MutableStateFlow<RoomProject?>(null)
     val selectedProject: StateFlow<RoomProject?> = _selectedProject.asStateFlow()
 
+    private val _modules = MutableStateFlow<List<RoomModule>>(emptyList())
+    val modules: StateFlow<List<RoomModule>> = _modules.asStateFlow()
+
+    private val _selectedModule = MutableStateFlow<RoomModule?>(null)
+    val selectedModule: StateFlow<RoomModule?> = _selectedModule.asStateFlow()
+
     init {
         viewModelScope.launch {
             roomProjectRepository.getAllProjectsFlow().collectLatest { list ->
                 _projects.value = list
+            }
+
+        }
+        viewModelScope.launch {
+            roomModuleRepository.getAllModulesFlow().collectLatest { list ->
+                _modules.value = list
             }
         }
     }
@@ -84,6 +99,10 @@ class TaskViewModel @Inject constructor(
     }
     fun setSelectedProject(project: RoomProject?) {
         _selectedProject.value = project
+    }
+
+    fun setSelectedModule(module: RoomModule?) {
+        _selectedModule.value = module
     }
 
 
@@ -164,7 +183,8 @@ class TaskViewModel @Inject constructor(
                         lastModifiedAt = System.currentTimeMillis(),
                         createdAt = System.currentTimeMillis(),
                         createdBy = loginPreference.getUserId(),
-                        projectId = _selectedProject.value?.projectId ?: ""
+                        projectId = _selectedProject.value?.projectId ?: "",
+                        moduleId = _selectedModule.value?.moduleId ?: ""
                     )
                     roomTaskRepository.insertTask(roomTask)
                     val result =
@@ -200,7 +220,12 @@ class TaskViewModel @Inject constructor(
         if (_category.value.trim().isEmpty()) {
             errors.add("Category is required")
         }
-
+        if (_selectedProject.value == null) {
+            errors.add("Project is required")
+        }
+        if (_selectedModule.value == null) {
+            errors.add("Module is required")
+        }
 
         _validationErrors.value = errors
         return errors.isEmpty()
@@ -215,6 +240,8 @@ class TaskViewModel @Inject constructor(
         _tags.value = emptyList()
         _currentTag.value = ""
         _validationErrors.value = emptyList()
+        _selectedProject.value = null
+        _selectedModule.value = null
     }
 
     sealed class UiState {

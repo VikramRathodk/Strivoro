@@ -5,8 +5,8 @@ object App {
 
     // Room  App database constants
     const val DATABASE_NAME = "striveo_database"
-    const val DATABASE_CURRENT_VERSION = 8
-    const val DATABASE_LAST_VERSION = 9
+    const val DATABASE_CURRENT_VERSION = 9
+    const val DATABASE_LAST_VERSION = 10
 
 
 

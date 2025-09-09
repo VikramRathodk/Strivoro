@@ -20,6 +20,6 @@ data class RoomTask(
     val createdAt: Long = System.currentTimeMillis(),
     val lastModifiedAt: Long = System.currentTimeMillis(),
     val createdBy: String = "", // Reference to the user who created the task
-    val projectId: String = "" // Reference to the project the task belongs to
-
+    val projectId: String = "", // Reference to the project the task belongs to
+    val moduleId: String = "" // Reference to the module the task belongs to
 )

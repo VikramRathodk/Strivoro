@@ -9,6 +9,7 @@ import com.devvikram.striveo.config.enums.TaskPriority
 import com.devvikram.striveo.config.enums.TaskStatus
 import com.devvikram.striveo.firebase.repository.FirebaseTaskRepository
 import com.devvikram.striveo.room.model.RoomTask
+import com.devvikram.striveo.room.repository.RoomModuleRepository
 import com.devvikram.striveo.room.repository.RoomProjectRepository
 import com.devvikram.striveo.room.repository.RoomTaskRepository
 import com.devvikram.striveo.ui.TaskStats
@@ -37,7 +38,8 @@ class HomeViewModel @Inject constructor(
     private val roomTaskRepository: RoomTaskRepository,
     private val firebaseFirestore: FirebaseFirestore,
     private val firebaseTaskRepository: FirebaseTaskRepository,
-    private val roomProjectRepository: RoomProjectRepository
+    private val roomProjectRepository: RoomProjectRepository,
+    private val roomModuleRepository: RoomModuleRepository,
 
 ) : ViewModel() {
 
@@ -311,7 +313,10 @@ class HomeViewModel @Inject constructor(
             .map { it?.projectName ?: "" }
     }
 
-
+    fun getModuleNameFlow(moduleId: String) : Flow<String> {
+        return roomModuleRepository.getModuleByIdFlow(moduleId)
+            .map { it?.title ?: "" }
+    }
 
 
     sealed class TaskUpdateState {

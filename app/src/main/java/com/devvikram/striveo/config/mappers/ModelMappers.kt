@@ -74,7 +74,8 @@ object ModelMappers {
             createdAt = roomTask.createdAt,
             lastModifiedAt = roomTask.lastModifiedAt,
             createdBy = roomTask.createdBy,
-            projectId = roomTask.projectId
+            projectId = roomTask.projectId,
+            moduleId = roomTask.moduleId
         )
     }
 
@@ -93,7 +94,8 @@ object ModelMappers {
             createdAt = firebaseTask.createdAt,
             lastModifiedAt = firebaseTask.lastModifiedAt,
             createdBy = firebaseTask.createdBy,
-            projectId = firebaseTask.projectId
+            projectId = firebaseTask.projectId,
+            moduleId = firebaseTask.moduleId
         )
     }
 

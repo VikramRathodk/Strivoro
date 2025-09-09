@@ -31,4 +31,7 @@ interface TaskDao {
 
     @Query("UPDATE tasks SET status = :status WHERE taskId = :taskId ")
     suspend fun updateTaskStatus(taskId: String, status: TaskStatus)
+
+    @Query("SELECT * FROM tasks WHERE taskId = :taskId")
+    fun getTaskByIdFlow(taskId: String): Flow<RoomTask?>
 }

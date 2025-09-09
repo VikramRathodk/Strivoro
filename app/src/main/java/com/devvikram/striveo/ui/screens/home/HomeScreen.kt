@@ -33,6 +33,8 @@ import com.devvikram.striveo.ui.navigation.Destination
 import com.devvikram.striveo.ui.screens.calender.CalenderScreen
 import com.devvikram.striveo.ui.screens.reminders.RemindersScreen
 import com.devvikram.striveo.ui.screens.tasks.TaskCreationScreen
+import com.devvikram.striveo.ui.screens.tasks.details.TaskDetailsScreen
+import com.devvikram.striveo.ui.screens.tasks.details.TaskDetailsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,7 +131,8 @@ fun HomeScreen(
                     viewModel = viewModel,
                     onTaskClick = { taskId ->
                         mainNavController.navigate(Destination.TaskDetails.createRoute(taskId))
-                    }
+                    },
+
                 )
             }
             composable(Destination.Calendar.route) {

@@ -75,9 +75,7 @@ fun TaskItemCard(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
             else MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (roomTask.isCompleted) 1.dp else 3.dp
-        ),
+
         border = when (taskStateUpdate) {
             is HomeViewModel.TaskUpdateState.Loading -> BorderStroke(
                 1.dp,
@@ -91,7 +89,12 @@ fun TaskItemCard(
                 1.dp,
                 Color(0xFFEF4444).copy(alpha = 0.7f)
             )
-            else -> null
+            else -> BorderStroke(
+                0.5.dp,
+                MaterialTheme.colorScheme.outline.copy(
+                    0.3f
+                )
+            )
         }
     ) {
         Column(
@@ -366,31 +369,64 @@ fun TaskItemCard(
                     }
                 }
             }
-            // Project chip
-            val projectName by viewModel.getProjectNameFlow(roomTask.projectId)
-                .collectAsState(initial = "")
+            // Collect flows
+            val projectName by viewModel.getProjectNameFlow(roomTask.projectId).collectAsState(initial = "")
+            val moduleName by viewModel.getModuleNameFlow(roomTask.moduleId).collectAsState(initial = "")
 
-            if (projectName.isNotEmpty()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Project:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
+// Show chips row
+            if (projectName.isNotEmpty() || moduleName.isNotEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp) // spacing between project & module
+                ) {
+                    if (projectName.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Project:",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
 
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        contentColor = MaterialTheme.colorScheme.primary,
-                        tonalElevation = 2.dp
-                    ) {
-                        Text(
-                            text = projectName,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelMedium
-                        )
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                tonalElevation = 2.dp
+                            ) {
+                                Text(
+                                    text = projectName,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
+                    }
+
+                    if (moduleName.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Module:",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                tonalElevation = 2.dp
+                            ) {
+                                Text(
+                                    text = moduleName,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
                     }
                 }
             }
