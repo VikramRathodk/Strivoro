@@ -1,7 +1,6 @@
 package com.devvikram.striveo.firebase.repository
 
 import android.util.Log
-import com.devvikram.striveo.AppUtils.Companion.generateStrongPassword
 import com.devvikram.striveo.config.constants.App
 import com.devvikram.striveo.firebase.models.MyFirebaseUser
 import com.google.firebase.auth.FirebaseAuth
@@ -19,7 +18,11 @@ class FirebaseUserRepository @Inject constructor(
     private val userCollection = firestore.collection(App.FIREBASE_COLLECTION_USERS)
 
     // insert user to firebase
-    fun insertUserToFirebase(user: MyFirebaseUser) {
+    fun insertUserToFirebase(
+        user: MyFirebaseUser,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception) -> Unit = {}
+    ) {
         Log.d(TAG, "Attempting to insert user to Firebase: $user")
 
         try {
@@ -33,14 +36,21 @@ class FirebaseUserRepository @Inject constructor(
                 .document(user.userId)
                 .set(user)
                 .addOnSuccessListener {
-                    Log.d(TAG, "User inserted to Firestore successfully: ${user.userId}")
+                    Log.d(TAG, "User inserted to Firestore successfully")
+                    onSuccess()
                 }
                 .addOnFailureListener { exception ->
-                    Log.e(TAG, "Failed to insert user to Firestore: ${exception.message}", exception)
+                    Log.e(
+                        TAG,
+                        "Failed to insert user to Firestore: ${exception.message}",
+                        exception
+                    )
+                    onFailure(exception)
                 }
 
         } catch (e: Exception) {
             Log.e(TAG, "Exception during insertUserToFirebase: ${e.message}", e)
+            onFailure(e)
         }
     }
 
@@ -70,13 +80,12 @@ class FirebaseUserRepository @Inject constructor(
 
     fun signUpUserToFirebase(
         mapToMyFirebaseUser: MyFirebaseUser,
-        password: String = generateStrongPassword(),
         onSuccess: () -> Unit = {},
         onFailure: (Exception) -> Unit = {}
     ) {
         firebaseAuth.createUserWithEmailAndPassword(
             mapToMyFirebaseUser.email,
-            password
+            mapToMyFirebaseUser.password
         ).addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 println("User signed up successfully with email: ${mapToMyFirebaseUser.email}")
@@ -115,12 +124,14 @@ class FirebaseUserRepository @Inject constructor(
             }
     }
 
-    fun getFirebaseUser(
+    fun signIn(
         email: String,
+        password: String,
         onSuccess: (MyFirebaseUser) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
         userCollection.whereEqualTo("email", email)
+            .whereEqualTo("password", password)
             .get()
             .addOnSuccessListener { querySnapshot ->
                 if (!querySnapshot.isEmpty) {
@@ -142,7 +153,7 @@ class FirebaseUserRepository @Inject constructor(
             }
     }
 
-     fun updateUserLastLogin(userId: String, currentTime: Long) {
+    fun updateUserLastLogin(userId: String, currentTime: Long) {
         userCollection.document(userId)
             .update("lastLoginAt", currentTime)
             .addOnSuccessListener {

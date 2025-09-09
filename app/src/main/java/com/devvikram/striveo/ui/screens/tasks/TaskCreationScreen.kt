@@ -1,16 +1,10 @@
 package com.devvikram.striveo.ui.screens.tasks
 
-import android.os.Build
-import androidx.annotation.RequiresApi
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -21,104 +15,185 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devvikram.striveo.config.enums.TaskPriority
-import com.devvikram.striveo.room.model.RoomTask
 
 import com.devvikram.striveo.ui.reuseables.TextFields
-import com.devvikram.striveo.ui.reuseables.chips.TagChip
-import com.devvikram.striveo.ui.reuseables.dialogs.DatePickerDialog
-import com.devvikram.striveo.ui.reuseables.dialogs.TimePickerDialog
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
+import com.devvikram.striveo.ui.reuseables.dropdowns.ReusableDropdown
 
-@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskCreationScreen(
     viewModel: TaskViewModel = hiltViewModel(),
-    onTaskCreated: (RoomTask) -> Unit = {}
+    onBackPressed: () -> Unit
 ) {
+
+    val uiState by viewModel.uiState.collectAsState()
     val title by viewModel.title.collectAsState()
     val description by viewModel.description.collectAsState()
     val category by viewModel.category.collectAsState()
     val priority by viewModel.priority.collectAsState()
     val tags by viewModel.tags.collectAsState()
     val currentTag by viewModel.currentTag.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val showSuccessMessage by viewModel.showSuccessMessage.collectAsState()
     val validationErrors by viewModel.validationErrors.collectAsState()
+    val projects by viewModel.projects.collectAsState()
+    val selectedProject by viewModel.selectedProject.collectAsState()
+    var isProjectDropdownExpanded by remember { mutableStateOf(false) }
+
+    val modules by viewModel.modules.collectAsState()
+    val selectedModule by viewModel.selectedModule.collectAsState()
+    var isModuleDropdownExpanded by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
 
-    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        rememberTopAppBarState()
-    )
-    Scaffold(
+    // Handle UI state changes
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is TaskViewModel.UiState.Success -> {
+                kotlinx.coroutines.delay(500)
+                onBackPressed()
+            }
+
+            else -> {}
+        }
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .imePadding()
-            .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
-        topBar = {
-            MediumTopAppBar(
-                scrollBehavior = topAppBarScrollBehavior,
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
+        // Sticky Header
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.primary,
+        ) {
+            Column {
+                // Top App Bar Content
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
 
-                title = {
+                    ) {
+                    IconButton(onClick = {
+                        onBackPressed()
+                    }) {
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                        )
+                    }
+
                     Column(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.weight(1f)
                     ) {
                         Text(
                             text = "Create Task",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Add a new task to your workflow",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(top = 4.dp)
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 2.dp)
                         )
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { /* Handle back navigation */ }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                }
+
+                Divider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    thickness = 0.5.dp
                 )
-            )
-        }) { paddingValues ->
+            }
+        }
+
+        // Scrollable Content
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-            contentPadding = PaddingValues(
-                top = paddingValues.calculateTopPadding() + 16.dp,
-                bottom = paddingValues.calculateBottomPadding() + 16.dp
-            )
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(vertical = 8.dp)
         ) {
+            // UI State Messages
+            when (uiState) {
+                is TaskViewModel.UiState.Success -> {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = Color(0xFF4CAF50)
+                                )
+                                Text(
+                                    text = (uiState as TaskViewModel.UiState.Success).message,
+                                    color = Color(0xFF2E7D32),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(start = 12.dp)
+                                )
+                            }
+                        }
+                    }
+                }
 
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
+                is TaskViewModel.UiState.Error -> {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Outlined.ErrorOutline,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                                Text(
+                                    text = (uiState as TaskViewModel.UiState.Error).message,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(start = 12.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                else -> {}
             }
+
             // Validation Errors
             if (validationErrors.isNotEmpty()) {
                 item {
@@ -154,14 +229,55 @@ fun TaskCreationScreen(
                 }
             }
 
+            // Project Selection
+            if (projects.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ReusableDropdown(
+                        label = "Project",
+                        items = projects,
+                        selectedItem = selectedProject,
+                        placeholder = "Select a project",
+                        leadingIcon = Icons.Outlined.Folder,
+                        isExpanded = isProjectDropdownExpanded,
+                        onExpandedChange = { isProjectDropdownExpanded = it },
+                        onItemSelected = viewModel::setSelectedProject,
+                        getItemTitle = { it.projectName },
+                        getItemDescription = { it.description },
+                        getItemId = { it.projectId }
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+            }
+
+            // Module Selection
+            if (modules.isNotEmpty()) {
+                item {
+                    ReusableDropdown(
+                        label = "Module",
+                        items = modules,
+                        selectedItem = selectedModule,
+                        placeholder = "Select a Module",
+                        leadingIcon = Icons.Outlined.ViewModule,
+                        isExpanded = isModuleDropdownExpanded,
+                        onExpandedChange = { isModuleDropdownExpanded = it },
+                        onItemSelected = viewModel::setSelectedModule,
+                        getItemTitle = { it.title },
+                        getItemDescription = { it.description },
+                        getItemId = { it.moduleId }
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+            }
+
             // Title Input
             item {
-                TextFields.FormTextField(
+                TextFields.CommonTextField(
                     value = title,
                     onValueChange = viewModel::updateTitle,
                     label = "Task Title",
                     placeholder = "What needs to be done?",
-                    icon = Icons.Outlined.Title,
+                    leadingIcon = Icons.Outlined.Title,
                     isRequired = true,
                     isError = validationErrors.any { it.contains("Title") },
                     keyboardOptions = KeyboardOptions(
@@ -174,21 +290,43 @@ fun TaskCreationScreen(
                 )
             }
 
-            // Description Input
+            // Description Input with Character Count and 255 Character Limit
             item {
-                TextFields.FormTextField(
-                    value = description,
-                    onValueChange = viewModel::updateDescription,
-                    label = "Description",
-                    placeholder = "Add more details...",
-                    minLines = 3,
-                    maxLines = 5
-                )
+                Column {
+                    TextFields.CommonTextField(
+                        value = description,
+                        onValueChange = { newValue ->
+                            if (newValue.length <= 255) {
+                                viewModel.updateDescription(newValue)
+                            }
+                        },
+                        label = "Description",
+                        placeholder = "Add more details...",
+                        minLines = 3,
+                        maxLines = 5,
+                        modifier = Modifier
+                            .fillMaxWidth()
+
+                    )
+
+                    // Character count display
+                    Text(
+                        text = "${description.length}/255",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (description.length > 240) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(top = 4.dp)
+                    )
+                }
             }
 
             // Category & Priority Row
             item {
-
                 Box(modifier = Modifier.fillMaxWidth()) {
                     CategorySelector(
                         selectedCategory = category,
@@ -199,6 +337,7 @@ fun TaskCreationScreen(
                 }
             }
 
+            // Priority selection
             item {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     PrioritySelector(
@@ -221,326 +360,78 @@ fun TaskCreationScreen(
                 )
             }
 
-            // Create Button
             item {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = { viewModel.createTask() },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
-                    enabled = !isLoading,
-                    shape = RoundedCornerShape(16.dp),
+                        .height(48.dp),
+                    enabled = uiState !is TaskViewModel.UiState.Loading,
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Create Task",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-        }
-
-        // Success Message
-        if (showSuccessMessage) {
-            LaunchedEffect(showSuccessMessage) {
-                kotlinx.coroutines.delay(2000)
-                viewModel.hideSuccessMessage()
-            }
-
-            Snackbar(
-                modifier = Modifier
-                    .padding(16.dp),
-                shape = RoundedCornerShape(12.dp),
-                containerColor = MaterialTheme.colorScheme.inverseSurface,
-                contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                action = {
-                    TextButton(onClick = viewModel::hideSuccessMessage) {
-                        Text("OK", color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Task created successfully!")
-                }
-            }
-        }
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CategorySelector(
-    selectedCategory: String,
-    predefinedCategories: List<String>,
-    onCategorySelected: (String) -> Unit,
-    isError: Boolean
-) {
-    var showDropdown by remember { mutableStateOf(false) }
-
-    Column {
-        Text(
-            text = "Category *",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        ExposedDropdownMenuBox(
-            expanded = showDropdown,
-            onExpandedChange = { showDropdown = !showDropdown }
-        ) {
-            OutlinedTextField(
-                value = selectedCategory,
-                onValueChange = onCategorySelected,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-                placeholder = {
-                    Text(
-                        "Select category",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        Icons.Outlined.Category,
-                        contentDescription = null,
-                        tint = if (isError) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDropdown)
-                },
-                isError = isError,
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                )
-            )
-
-            ExposedDropdownMenu(
-                expanded = showDropdown,
-                onDismissRequest = { showDropdown = false },
-                modifier = Modifier.background(
-                    MaterialTheme.colorScheme.surface,
-                    RoundedCornerShape(12.dp)
-                )
-            ) {
-                predefinedCategories.forEach { category ->
-                    DropdownMenuItem(
-                        text = { Text(category) },
-                        onClick = {
-                            onCategorySelected(category)
-                            showDropdown = false
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PrioritySelector(
-    selectedPriority: TaskPriority,
-    onPrioritySelected: (TaskPriority) -> Unit
-) {
-    Column {
-        Text(
-            text = "Priority",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(TaskPriority.values()) { priority ->
-                val isSelected = selectedPriority == priority
-                val (color, bgColor) = when (priority) {
-                    TaskPriority.HIGH -> Color(0xFFFF5252) to Color(0xFFFFEBEE)
-                    TaskPriority.MEDIUM -> Color(0xFFFF9800) to Color(0xFFFFF3E0)
-                    TaskPriority.LOW -> Color(0xFF4CAF50) to Color(0xFFE8F5E8)
-                }
-
-                Card(
-                    modifier = Modifier
-                        .clickable { onPrioritySelected(priority) }
-                        .animateContentSize(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) bgColor else MaterialTheme.colorScheme.surface
+                        containerColor = when (uiState) {
+                            is TaskViewModel.UiState.Success -> Color(0xFF4CAF50)
+                            else -> MaterialTheme.colorScheme.primary
+                        },
+                        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                     ),
-                    border = BorderStroke(
-                        width = if (isSelected) 1.5.dp else 1.dp,
-                        color = if (isSelected) color else MaterialTheme.colorScheme.outline.copy(
-                            alpha = 0.3f
-                        )
-                    ),
-                    shape = RoundedCornerShape(8.dp)
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 2.dp,
+                        pressedElevation = 6.dp,
+                        disabledElevation = 0.dp
+                    )
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(color, CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = priority.name.lowercase().replaceFirstChar { it.uppercase() },
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
-                        )
+                        when (uiState) {
+                            is TaskViewModel.UiState.Loading -> {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Creating...",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            is TaskViewModel.UiState.Success -> {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    "Created!",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            else -> {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    "Create Task",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
-
-@Composable
-private fun TagsSection(
-    tags: List<String>,
-    currentTag: String,
-    suggestedTags: List<String>,
-    onCurrentTagChanged: (String) -> Unit,
-    onAddTag: () -> Unit,
-    onRemoveTag: (String) -> Unit,
-    onAddSuggestedTag: (String) -> Unit
-) {
-    Column {
-        Text(
-            text = "Tags",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        // Add tag input
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = currentTag,
-                onValueChange = onCurrentTagChanged,
-                modifier = Modifier.weight(1f),
-                placeholder = {
-                    Text(
-                        "Add tag...",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        Icons.Outlined.Tag,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { onAddTag() }),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                )
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            FilledIconButton(
-                onClick = onAddTag,
-                enabled = currentTag.isNotBlank(),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Add tag",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-        }
-
-        // Current tags
-        if (tags.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(tags) { tag ->
-                    TagChip(
-                        tag = tag,
-                        onRemove = { onRemoveTag(tag) },
-                        isSelected = true
-                    )
-                }
-            }
-        }
-
-        // Suggested tags
-        if (suggestedTags.filter { !tags.contains(it) }.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "Suggested:",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(suggestedTags.filter { !tags.contains(it) }) { tag ->
-                    TagChip(
-                        tag = tag,
-                        onRemove = { onAddSuggestedTag(tag) },
-                        isSelected = false
-                    )
-                }
-            }
-        }
-    }
-}
-
-
-
-

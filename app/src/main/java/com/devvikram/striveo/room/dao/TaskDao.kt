@@ -1,6 +1,7 @@
 package com.devvikram.striveo.room.dao
 
 import androidx.room.*
+import com.devvikram.striveo.config.enums.TaskStatus
 import com.devvikram.striveo.room.model.RoomTask
 import kotlinx.coroutines.flow.Flow
 
@@ -24,4 +25,13 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks")
     suspend fun deleteAllTasks()
+
+    @Query("DELETE FROM tasks WHERE taskId = :taskId")
+    suspend fun deleteTaskById(taskId: String)
+
+    @Query("UPDATE tasks SET status = :status WHERE taskId = :taskId ")
+    suspend fun updateTaskStatus(taskId: String, status: TaskStatus)
+
+    @Query("SELECT * FROM tasks WHERE taskId = :taskId")
+    fun getTaskByIdFlow(taskId: String): Flow<RoomTask?>
 }

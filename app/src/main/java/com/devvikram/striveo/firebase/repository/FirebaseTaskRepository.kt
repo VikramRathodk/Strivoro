@@ -29,4 +29,19 @@ class FirebaseTaskRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    suspend fun updateTaskFields(
+        taskId: String,
+        field: Map<String, Any>,
+        onSuccessListener: (String) -> Unit,
+        onFailedListener: (String) -> Unit
+    ) {
+        try {
+            tasksCollection.document(taskId).update(field).await()
+            onSuccessListener("Updated Successfully")
+        } catch (e: Exception) {
+            Log.e("FirebaseTaskRepository", "Failed to update task: ${e.message}", e)
+            onFailedListener(e.message.toString())
+        }
+    }
 }

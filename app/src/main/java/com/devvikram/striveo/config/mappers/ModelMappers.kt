@@ -5,8 +5,12 @@ import com.devvikram.striveo.room.model.RoomUser
 import com.devvikram.striveo.config.constants.AppThemeMode
 import com.devvikram.striveo.config.constants.PreferenceLanguage
 import com.devvikram.striveo.config.constants.UserAccountType
+import com.devvikram.striveo.firebase.models.FirebaseModule
+import com.devvikram.striveo.firebase.models.FirebaseProject
 import com.devvikram.striveo.firebase.models.FirebaseTask
 import com.devvikram.striveo.firebase.models.MyFirebaseUser
+import com.devvikram.striveo.room.model.RoomModule
+import com.devvikram.striveo.room.model.RoomProject
 import com.devvikram.striveo.room.model.RoomTask
 
 object ModelMappers {
@@ -17,6 +21,7 @@ object ModelMappers {
             name = roomUser.name,
             phone = roomUser.phone,
             email = roomUser.email,
+            password = roomUser.password,
             avatarUrl = roomUser.avatarUrl,
             userType = roomUser.userType.name,
             isActive = roomUser.isActive,
@@ -39,6 +44,7 @@ object ModelMappers {
             phone = myFirebaseUser.phone,
             email = myFirebaseUser.email,
             avatarUrl = myFirebaseUser.avatarUrl,
+            password = myFirebaseUser.password,
             userType = UserAccountType.fromString(myFirebaseUser.userType),
             isActive = myFirebaseUser.isActive,
             isEmailVerified = myFirebaseUser.isEmailVerified,
@@ -63,10 +69,13 @@ object ModelMappers {
             estimatedTime = roomTask.estimatedTime,
             dueDate = roomTask.dueDate,
             isCompleted = roomTask.isCompleted,
+            status = roomTask.status,
             tags = roomTask.tags,
             createdAt = roomTask.createdAt,
             lastModifiedAt = roomTask.lastModifiedAt,
-            createdBy = roomTask.createdBy
+            createdBy = roomTask.createdBy,
+            projectId = roomTask.projectId,
+            moduleId = roomTask.moduleId
         )
     }
 
@@ -80,11 +89,78 @@ object ModelMappers {
             estimatedTime = firebaseTask.estimatedTime,
             dueDate = firebaseTask.dueDate,
             isCompleted = firebaseTask.isCompleted,
+            status = firebaseTask.status,
             tags = firebaseTask.tags,
             createdAt = firebaseTask.createdAt,
             lastModifiedAt = firebaseTask.lastModifiedAt,
-            createdBy = firebaseTask.createdBy
+            createdBy = firebaseTask.createdBy,
+            projectId = firebaseTask.projectId,
+            moduleId = firebaseTask.moduleId
         )
     }
 
+
+    fun mapToRoomProject(project: FirebaseProject?): RoomProject {
+        return RoomProject(
+            projectId = project?.projectId ?: "",
+            projectName = project?.projectName ?: "",
+            description = project?.description ?: "",
+            createdBy = project?.createdBy ?: "",
+            createdAt = project?.createdAt ?: System.currentTimeMillis(),
+            lastModifiedAt = project?.lastModifiedAt ?: System.currentTimeMillis(),
+            status = project?.status ?: "active",
+        )
+
+    }
+
+    fun mapToFirebaseProject(
+        roomProject: RoomProject
+    ): FirebaseProject {
+        return FirebaseProject(
+            projectId = roomProject.projectId,
+            projectName = roomProject.projectName,
+            description = roomProject.description,
+            createdBy = roomProject.createdBy,
+            createdAt = roomProject.createdAt,
+            lastModifiedAt = roomProject.lastModifiedAt,
+            status = roomProject.status,
+        )
+    }
+
+    fun mapToRoomModule(
+        module: FirebaseModule
+    ): RoomModule {
+        return RoomModule(
+            moduleId = module.moduleId,
+            projectId = module.projectId,
+            title = module.title,
+            description = module.description,
+            status = module.status,
+            priority = module.priority,
+            createdBy = module.createdBy,
+            createdAt = module.createdAt,
+            lastModifiedAt = module.lastModifiedAt,
+            dueDate = module.dueDate,
+            progress = module.progress
+        )
+    }
+
+
+    fun mapToFirebaseModule(
+        roomModule: RoomModule
+    ): FirebaseModule {
+        return FirebaseModule(
+            moduleId = roomModule.moduleId,
+            projectId = roomModule.projectId,
+            title = roomModule.title,
+            description = roomModule.description,
+            status = roomModule.status,
+            priority = roomModule.priority,
+            createdBy = roomModule.createdBy,
+            createdAt = roomModule.createdAt,
+            lastModifiedAt = roomModule.lastModifiedAt,
+            dueDate = roomModule.dueDate,
+            progress = roomModule.progress
+        )
+    }
 }

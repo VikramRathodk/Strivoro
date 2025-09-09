@@ -1,143 +1,333 @@
 package com.devvikram.striveo.ui.screens.home
 
-
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devvikram.striveo.config.constants.LoginPreference
 import com.devvikram.striveo.config.enums.TaskFilter
 import com.devvikram.striveo.config.enums.TaskPriority
+import com.devvikram.striveo.config.enums.TaskStatus
+import com.devvikram.striveo.firebase.repository.FirebaseTaskRepository
 import com.devvikram.striveo.room.model.RoomTask
+import com.devvikram.striveo.room.repository.RoomModuleRepository
+import com.devvikram.striveo.room.repository.RoomProjectRepository
 import com.devvikram.striveo.room.repository.RoomTaskRepository
 import com.devvikram.striveo.ui.TaskStats
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
-import kotlin.collections.emptyList
-
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val roomTaskRepository: RoomTaskRepository
-) : ViewModel() {
+    val loginPreference: LoginPreference,
+    private val roomTaskRepository: RoomTaskRepository,
+    private val firebaseFirestore: FirebaseFirestore,
+    private val firebaseTaskRepository: FirebaseTaskRepository,
+    private val roomProjectRepository: RoomProjectRepository,
+    private val roomModuleRepository: RoomModuleRepository,
 
-    private val _tasks = MutableStateFlow(emptyList<RoomTask>())
-    val tasks: StateFlow<List<RoomTask>> = _tasks.asStateFlow()
+) : ViewModel() {
 
     private val _selectedFilter = MutableStateFlow(TaskFilter.TODAY)
     val selectedFilter: StateFlow<TaskFilter> = _selectedFilter.asStateFlow()
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+
+    private val _taskUpdateStates = mutableStateMapOf<String, TaskUpdateState>()
+    val taskUpdateStates: Map<String, TaskUpdateState> = _taskUpdateStates
+
+    private val _streakCountState = MutableStateFlow(0)
+    val streakCountState: StateFlow<Int> = _streakCountState.asStateFlow()
+
+    init {
+        updateStreak()
+    }
+
+
+    fun updateStreak() {
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val lastActive = loginPreference.getLastActiveDate()
+        var currentStreak = loginPreference.getStreakCount()
+
+        when (lastActive) {
+            today -> {
+                // Already counted today → do nothing
+            }
+            getYesterdayDate() -> {
+                // Consecutive day → increase streak
+                currentStreak += 1
+            }
+            else -> {
+                // Gap → reset streak
+                currentStreak = 1
+            }
+        }
+
+        loginPreference.setLastActiveDate(today)
+        loginPreference.setStreakCount(currentStreak)
+        _streakCountState.value = currentStreak
+    }
+
+    private fun getYesterdayDate(): String {
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DATE, -1)
+        return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(calendar.time)
+    }
+
+
+    fun getTaskUpdateState(taskId: String): TaskUpdateState {
+        return _taskUpdateStates[taskId] ?: TaskUpdateState.Idle
+    }
+
+    val allTasks: StateFlow<List<RoomTask>> = roomTaskRepository.getAllTasks()
+        .catch { exception ->
+            _error.value = "Failed to load tasks: ${exception.message}"
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     val filteredTasks: StateFlow<List<RoomTask>> = combine(
-        roomTaskRepository.getAllTasks(),
+        allTasks,
         _selectedFilter
     ) { taskList, filter ->
-        when (filter) {
-            TaskFilter.ALL -> taskList
-            TaskFilter.TODAY -> taskList.filter {
-                it.dueDate == "Today" || it.dueDate.contains("AM") || it.dueDate.contains("PM")
-            }
-            TaskFilter.UPCOMING -> taskList.filter {
-                it.dueDate == "Tomorrow" || it.dueDate == "This Week"
-            }
-            TaskFilter.COMPLETED -> taskList.filter { it.isCompleted }
-            TaskFilter.OVERDUE -> taskList.filter {
-                !it.isCompleted && it.dueDate == "Yesterday"
-            }
-        }
-    }.stateFlow(viewModelScope, emptyList())
+        filterTasks(taskList, filter)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
-    val taskStats: StateFlow<TaskStats> = _tasks.map { taskList ->
-        TaskStats(
-            totalTasks = taskList.size,
-            completedTasks = taskList.count { it.isCompleted },
-            pendingTasks = taskList.count { !it.isCompleted },
-            overdueTasks = taskList.count { !it.isCompleted && it.dueDate == "Yesterday" },
-            focusTime = "4.2h",
-            productivity = 87,
-            weeklyCompletion = 85
-        )
-    }.stateFlow(viewModelScope, TaskStats(0, 0, 0, 0, "0h", 0, 0))
+    val taskStats: StateFlow<TaskStats> = allTasks.map { taskList ->
+        calculateTaskStats(taskList)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = TaskStats(0, 0, 0, 0, "0h", 0, 0)
+    )
 
     val greeting: String
-        get() {
-            val currentTime = SimpleDateFormat("HH", Locale.getDefault()).format(Date()).toInt()
-            return when {
-                currentTime < 12 -> "Good Morning"
-                currentTime < 17 -> "Good Afternoon"
-                else -> "Good Evening"
+        get() = getTimeBasedGreeting()
+
+    private fun filterTasks(taskList: List<RoomTask>, filter: TaskFilter): List<RoomTask> {
+        return when (filter) {
+            TaskFilter.ALL -> taskList
+            TaskFilter.TODAY -> taskList.filter { task ->
+                isTaskForToday(task.createdAt)
+            }
+
+            TaskFilter.UPCOMING -> taskList.filter { task ->
+                isTaskUpcoming(task.createdAt)
+            }
+
+            TaskFilter.COMPLETED -> taskList.filter { it.isCompleted }
+            TaskFilter.OVERDUE -> taskList.filter { task ->
+                !task.isCompleted && isTaskOverdue(task.createdAt)
             }
         }
+    }
+
+    private fun calculateTaskStats(taskList: List<RoomTask>): TaskStats {
+        val completedCount = taskList.count { it.isCompleted }
+        val pendingCount = taskList.count { !it.isCompleted }
+        val overdueCount = taskList.count { !it.isCompleted && isTaskOverdue(it.createdAt) }
+
+        val productivity = if (taskList.isEmpty()) 0 else (completedCount * 100) / taskList.size
+
+        return TaskStats(
+            totalTasks = taskList.size,
+            completedTasks = completedCount,
+            pendingTasks = pendingCount,
+            overdueTasks = overdueCount,
+            focusTime = calculateFocusTime(taskList),
+            productivity = productivity,
+            weeklyCompletion = calculateWeeklyCompletion(taskList)
+        )
+    }
+
+    private fun calculateFocusTime(taskList: List<RoomTask>): String {
+        val completedTasksToday = taskList.count {
+            it.isCompleted && isTaskForToday(it.createdAt)
+        }
+        val estimatedHours = completedTasksToday * 0.5
+        return String.format("%.1fh", estimatedHours)
+    }
+
+    private fun calculateWeeklyCompletion(taskList: List<RoomTask>): Int {
+        val thisWeekTasks = taskList.filter { isTaskThisWeek(it.createdAt) }
+        val completedThisWeek = thisWeekTasks.count { it.isCompleted }
+
+        return if (thisWeekTasks.isEmpty()) 0
+        else (completedThisWeek * 100) / thisWeekTasks.size
+    }
+
+    private fun isTaskForToday(timeStamp: Long): Boolean {
+        val calTask = Calendar.getInstance().apply { timeInMillis = timeStamp }
+        val calToday = Calendar.getInstance()
+
+        return calTask.get(Calendar.YEAR) == calToday.get(Calendar.YEAR) &&
+                calTask.get(Calendar.DAY_OF_YEAR) == calToday.get(Calendar.DAY_OF_YEAR)
+    }
+
+    private fun isTaskUpcoming(dueDate: Long): Boolean {
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        return dueDate > today
+    }
+
+    private fun isTaskOverdue(dueDate: Long): Boolean {
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+
+        return dueDate < today
+    }
+
+    private fun isTaskThisWeek(timeStamp: Long): Boolean {
+        val cal = Calendar.getInstance()
+        val weekOfYear = cal.get(Calendar.WEEK_OF_YEAR)
+        val year = cal.get(Calendar.YEAR)
+
+        val calTask = Calendar.getInstance().apply { timeInMillis = timeStamp }
+
+        return calTask.get(Calendar.WEEK_OF_YEAR) == weekOfYear &&
+                calTask.get(Calendar.YEAR) == year
+    }
+    private fun getTimeBasedGreeting(): String {
+        val currentTime = SimpleDateFormat("HH", Locale.getDefault()).format(Date()).toInt()
+        return when {
+            currentTime < 12 -> "Good Morning"
+            currentTime < 17 -> "Good Afternoon"
+            else -> "Good Evening"
+        }
+    }
 
     fun toggleTask(taskId: String) {
         viewModelScope.launch {
-            _tasks.value = _tasks.value.map { task ->
-                if (task.taskId == taskId) {
-                    task.copy(isCompleted = !task.isCompleted)
-                } else {
-                    task
+            _isLoading.value = true
+            _error.value = null
+
+            try {
+                val task = roomTaskRepository.getTaskById(taskId)
+
+                task?.let { currentTask ->
+                    val updatedTask = currentTask.copy(
+                        isCompleted = !currentTask.isCompleted,
+                        lastModifiedAt = System.currentTimeMillis()
+                    )
+                    roomTaskRepository.updateTask(updatedTask)
+                } ?: run {
+                    _error.value = "Task not found"
                 }
+            } catch (e: Exception) {
+                _error.value = "Failed to update task: ${e.message}"
+                e.printStackTrace()
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
     fun setFilter(filter: TaskFilter) {
         _selectedFilter.value = filter
+        _error.value = null
+    }
+
+    fun clearError() {
+        _error.value = null
+    }
+
+    fun refreshTasks() {
+        // The flow will automatically refresh, but you can add manual refresh logic if needed
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                // Force refresh from repository if needed
+                // roomTaskRepository.refreshTasks()
+            } catch (e: Exception) {
+                _error.value = "Failed to refresh tasks: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // StateFlows are automatically cleaned up with viewModelScope
+    }
+
+    fun updateTaskStatus(taskId: String, status: TaskStatus) {
+        viewModelScope.launch {
+            _taskUpdateStates[taskId] = TaskUpdateState.Loading
+            roomTaskRepository.updateTaskStatus(taskId, status)
+            firebaseTaskRepository.updateTaskFields(
+                taskId = taskId,
+                field = mapOf(
+                    "status" to status,
+                    "isCompleted" to (status == TaskStatus.COMPLETED),
+                    "lastModifiedAt" to System.currentTimeMillis()
+                ),
+                onSuccessListener = { it->
+                    _taskUpdateStates[taskId] = TaskUpdateState.Success(it)
+                },
+                onFailedListener = {  it ->
+                    _taskUpdateStates[taskId] = TaskUpdateState.Failure(it ?: "Update failed")
+                }
+            )
+        }
+    }
+
+    fun getProjectNameFlow(projectId: String): Flow<String> {
+        return roomProjectRepository.getProjectByIdFlow(projectId)
+            .map { it?.projectName ?: "" }
+    }
+
+    fun getModuleNameFlow(moduleId: String) : Flow<String> {
+        return roomModuleRepository.getModuleByIdFlow(moduleId)
+            .map { it?.title ?: "" }
     }
 
 
-    private fun getSampleTasks(): List<RoomTask> {
-        return listOf(
-            RoomTask("1", "Complete project presentation", "Prepare slides for quarterly business review meeting", "Work", TaskPriority.HIGH.name, "3h", "Today", true, listOf("presentation", "urgent", "meeting")),
-            RoomTask("2", "Buy groceries for dinner", "Get ingredients for pasta and salad", "Personal", TaskPriority.MEDIUM.name, "1h", "Today", true, listOf("shopping", "food")),
-            RoomTask("3", "Morning workout routine", "30 minutes cardio + strength training", "Health", TaskPriority.HIGH.name, "45min", "Today", true, listOf("fitness", "routine", "morning")),
-            RoomTask("4", "Review code changes", "Check pull requests from team members", "Work", TaskPriority.MEDIUM.name, "2h", "Today", false, listOf("code-review", "development")),
-            RoomTask("5", "Call dentist for appointment", "Schedule routine cleaning appointment", "Health", TaskPriority.LOW.name, "15min", "Tomorrow", false, listOf("appointment", "health")),
-            RoomTask("6", "Read chapter 5 of Kotlin book", "Study coroutines and async programming", "Learning", TaskPriority.MEDIUM.name, "1.5h", "Tomorrow", false, listOf("programming", "study", "kotlin")),
-            RoomTask("7", "Submit expense report", "Upload receipts from last week's business trip", "Work", TaskPriority.HIGH.name, "30min", "Yesterday", false, listOf("expenses", "finance", "overdue")),
-            RoomTask("8", "Plan weekend hiking trip", "Research trails and book accommodation", "Personal", TaskPriority.LOW.name, "2h", "This Week", false, listOf("travel", "outdoor", "planning")),
-            RoomTask("9", "Update LinkedIn profile", "Add recent project achievements and skills", "Personal", TaskPriority.LOW.name, "45min", "This Week", true, listOf("career", "networking", "profile")),
-            RoomTask("10", "Team standup meeting", "Daily sync with development team", "Work", TaskPriority.MEDIUM.name, "30min", "Today", true, listOf("meeting", "standup", "team")),
-            RoomTask("11", "Practice guitar", "Work on new song chord progressions", "Personal", TaskPriority.LOW.name, "1h", "Today", false, listOf("music", "hobby", "practice")),
-            RoomTask("12", "Prepare tax documents", "Gather W2s and receipts for tax filing", "Personal", TaskPriority.HIGH.name, "2.5h", "This Week", false, listOf("taxes", "documents", "finance")),
-            RoomTask("13", "Organize closet", "Sort clothes and donate unused items", "Personal", TaskPriority.MEDIUM.name, "2h", "This Month", false, listOf("cleaning", "organization")),
-            RoomTask("14", "Client follow-up emails", "Respond to open queries and schedule calls", "Work", TaskPriority.HIGH.name, "1h", "Tomorrow", false, listOf("email", "client", "communication")),
-            RoomTask("15", "Yoga session", "Attend online yoga class", "Health", TaskPriority.MEDIUM.name, "1h", "Today", false, listOf("yoga", "wellness")),
-            RoomTask("16", "Write blog post", "Topic: Productivity hacks with AI tools", "Learning", TaskPriority.HIGH.name, "2h", "This Week", false, listOf("writing", "blog", "productivity")),
-            RoomTask("17", "Paint bedroom", "Choose colors and repaint walls", "Personal", TaskPriority.MEDIUM.name, "4h", "Weekend", false, listOf("home", "DIY")),
-            RoomTask("18", "Watch design tutorial", "Figma advanced tips", "Learning", TaskPriority.LOW.name, "1h", "This Week", true, listOf("design", "figma")),
-            RoomTask("19", "Laundry", "Wash and fold clothes", "Personal", TaskPriority.LOW.name, "1.5h", "Today", true, listOf("chores", "home")),
-            RoomTask("20", "Backup project files", "Upload to cloud storage", "Work", TaskPriority.HIGH.name, "30min", "Today", false, listOf("backup", "project", "cloud")),
-            RoomTask("21", "Plan content calendar", "Outline social posts for next 2 weeks", "Work", TaskPriority.MEDIUM.name, "2h", "Tomorrow", false, listOf("content", "planning")),
-            RoomTask("22", "Refactor login screen", "Clean architecture for login flow", "Work", TaskPriority.HIGH.name, "2h", "Today", false, listOf("refactor", "login")),
-            RoomTask("23", "Walk the dog", "Evening walk at the park", "Personal", TaskPriority.LOW.name, "30min", "Today", false, listOf("pet", "exercise")),
-            RoomTask("24", "Doctor appointment", "Annual check-up", "Health", TaskPriority.MEDIUM.name, "1h", "Next Week", false, listOf("checkup", "health")),
-            RoomTask("25", "Finish puzzle", "1000 piece jigsaw", "Personal", TaskPriority.LOW.name, "3h", "This Week", false, listOf("hobby", "brain")),
-            RoomTask("26", "Clean kitchen", "Deep clean and organize pantry", "Personal", TaskPriority.MEDIUM.name, "2h", "This Week", true, listOf("cleaning", "kitchen")),
-            RoomTask("27", "Design portfolio update", "Add latest projects", "Work", TaskPriority.MEDIUM.name, "1.5h", "Today", false, listOf("portfolio", "design")),
-            RoomTask("28", "Research investment options", "Compare mutual funds", "Personal", TaskPriority.MEDIUM.name, "1h", "This Month", true, listOf("finance", "investments")),
-            RoomTask("29", "Volunteer call", "NGO coordination call", "Personal", TaskPriority.MEDIUM.name, "1h", "Tomorrow", true, listOf("volunteer", "call")),
-            RoomTask("30", "Install latest OS update", "Device maintenance", "Personal", TaskPriority.LOW.name, "45min", "This Week", false, listOf("system", "update")),
-            RoomTask("31", "Schedule team 1-on-1s", "Plan for feedback sessions", "Work", TaskPriority.MEDIUM.name, "1h", "Next Week", true, listOf("feedback", "team")),
+    sealed class TaskUpdateState {
+        object Idle : TaskUpdateState()
 
-        )
+        object Loading : TaskUpdateState()
+
+        data class Success(
+            val message : String
+        ) : TaskUpdateState()
+        data class Failure(val errorMessage: String) : TaskUpdateState()
     }
 
-}
-
-// Extension function to create StateFlow from Flow
-private fun <T> kotlinx.coroutines.flow.Flow<T>.stateFlow(
-    scope: kotlinx.coroutines.CoroutineScope,
-    initialValue: T
-): StateFlow<T> {
-    val stateFlow = MutableStateFlow(initialValue)
-    scope.launch {
-        collect { stateFlow.value = it }
-    }
-    return stateFlow.asStateFlow()
 }

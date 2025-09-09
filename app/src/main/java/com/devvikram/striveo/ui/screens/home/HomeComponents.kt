@@ -28,15 +28,12 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,15 +48,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devvikram.striveo.config.enums.TaskFilter
-import com.devvikram.striveo.config.enums.TaskPriority
+import com.devvikram.striveo.config.enums.TaskStatus
 import com.devvikram.striveo.room.model.RoomTask
 import com.devvikram.striveo.ui.QuickAction
 import com.devvikram.striveo.ui.TaskStats
+import com.devvikram.striveo.ui.reuseables.common.TaskItemCard
 
 @Composable
 fun ProgressSection(stats: TaskStats) {
@@ -317,7 +314,7 @@ fun StatCardPreview() {
 fun TaskFilterSection(selectedFilter: TaskFilter, onFilterSelected: (TaskFilter) -> Unit) {
     Column {
         Text(
-            text = "Tasks",
+            text = "Your Tasks",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 12.dp)
@@ -649,193 +646,38 @@ fun QuickActionCard(action: QuickAction) {
     }
 }
 
-@Preview
-@Composable
-fun TasksSectionPreview() {
-    val roomTasks = listOf(
-        RoomTask(
-            taskId = "1",
-            title = "Complete project proposal",
-            description = "Draft and finalize the project proposal document.",
-            category = "Work",
-            priority = TaskPriority.HIGH.name,
-            estimatedTime = "2h",
-            dueDate = "2023-10-27",
-            isCompleted = false,
-            tags = listOf("project", "work", "proposal")
-        )
-    )
-    TasksSection(
-        roomTasks = roomTasks,
-        filter = TaskFilter.ALL,
-        onTaskToggle = {},
-        onTaskClick = {}
-    )
-}
+
 
 @Composable
 fun TasksSection(
     roomTasks: List<RoomTask>,
     filter: TaskFilter,
     onTaskToggle: (String) -> Unit,
-    onTaskClick: (String) -> Unit
+    onTaskClick: (String) -> Unit,
+    onStatusChange: (String, TaskStatus) -> Unit,
+    viewModel: HomeViewModel,
 ) {
     Column {
         if (roomTasks.isEmpty()) {
             EmptyTasksState(filter)
         } else {
             roomTasks.forEach { task ->
-                TaskItem(
+
+                TaskItemCard(
                     roomTask = task,
                     onToggle = { onTaskToggle(task.taskId) },
-                    onClick = { onTaskClick(task.taskId) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    }
-}
-
-@Preview
-@Composable
-fun TaskItemPreview() {
-    val roomTask = RoomTask(
-        taskId = "1",
-        title = "Complete project proposal",
-        description = "Draft and finalize the project proposal document.",
-        category = "Work",
-        priority = TaskPriority.HIGH.name,
-        estimatedTime = "2h",
-        dueDate = "2023-10-27",
-        isCompleted = false,
-        tags = listOf("project", "work", "proposal")
-    )
-    TaskItem(
-        roomTask = roomTask,
-        onToggle = {},
-        onClick = {}
-    )
-}
-
-@Composable
-fun TaskItem(
-    roomTask: RoomTask,
-    onToggle: () -> Unit,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (roomTask.isCompleted)
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            else MaterialTheme.colorScheme.surface
-        ),
-        border = BorderStroke(
-            width = 0.5.dp,
-            color = MaterialTheme.colorScheme.outline.copy(
-                alpha = 0.2f
-            )
-        )
-
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            IconButton(
-                onClick = onToggle,
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    imageVector = if (roomTask.isCompleted) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
-                    contentDescription = if (roomTask.isCompleted) "Completed" else "Mark complete",
-                    tint = if (roomTask.isCompleted) Color(0xFF10B981) else MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = roomTask.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (roomTask.isCompleted)
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    else MaterialTheme.colorScheme.onSurface
-                )
-
-                if (roomTask.description.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = roomTask.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(
-                                color = when (roomTask.priority) {
-                                    TaskPriority.HIGH.name -> Color(0xFFEF4444)
-                                    TaskPriority.MEDIUM.name -> Color(0xFFF59E0B)
-                                    TaskPriority.LOW.name -> Color(0xFF10B981)
-                                    else -> {
-                                        Color.Transparent
-                                    }
-                                },
-                                shape = CircleShape
-                            )
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = "${roomTask.category} • ${roomTask.estimatedTime} • ${roomTask.dueDate}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
-
-                if (roomTask.tags.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        items(roomTask.tags.take(3)) { tag ->
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(
-                                    text = tag,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                )
-                            }
-                        }
+                    onClick = { onTaskClick(task.taskId) },
+                    viewModel = viewModel,
+                    onStatusChange = {
+                        onStatusChange(task.taskId, it)
                     }
-                }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
 }
+
 
 @Composable
 fun EmptyTasksState(filter: TaskFilter) {

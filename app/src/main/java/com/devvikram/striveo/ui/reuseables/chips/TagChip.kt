@@ -25,11 +25,12 @@ import androidx.compose.ui.unit.sp
 @Composable
  fun TagChip(
     tag: String,
-    onRemove: () -> Unit,
-    isSelected: Boolean
+    onClick: () -> Unit,
+    isSelected: Boolean = false,
+    isIconVisible: Boolean = false
 ) {
     Card(
-        modifier = Modifier.clickable { onRemove() },
+        modifier = Modifier.clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
                 MaterialTheme.colorScheme.primaryContainer
@@ -52,15 +53,20 @@ import androidx.compose.ui.unit.sp
                     MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.width(4.dp))
-            Icon(
-                imageVector = if (isSelected) Icons.Default.Close else Icons.Default.Add,
-                contentDescription = if (isSelected) "Remove tag" else "Add tag",
-                modifier = Modifier.size(14.dp),
-                tint = if (isSelected)
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (
+                isIconVisible
+            ){
+                Icon(
+                    imageVector = if (isSelected) Icons.Default.Close else Icons.Default.Add,
+                    contentDescription = if (isSelected) "Remove tag" else "Add tag",
+                    modifier = Modifier.size(14.dp),
+                    tint = if (isSelected)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
         }
     }
 }

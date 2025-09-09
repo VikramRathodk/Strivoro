@@ -1,41 +1,40 @@
 package com.devvikram.striveo.ui.screens.home
 
 import android.os.Build
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import com.devvikram.striveo.ui.navigation.Destination
 import com.devvikram.striveo.ui.screens.calender.CalenderScreen
 import com.devvikram.striveo.ui.screens.reminders.RemindersScreen
 import com.devvikram.striveo.ui.screens.tasks.TaskCreationScreen
+import com.devvikram.striveo.ui.screens.tasks.details.TaskDetailsScreen
+import com.devvikram.striveo.ui.screens.tasks.details.TaskDetailsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,13 +47,32 @@ fun HomeScreen(
     val navBackStackEntry by homeNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // scroll behavior for collapsible toolbar
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    // Animation for FAB
     val fabVisible by remember {
-        derivedStateOf { currentRoute == Destination.Home.route }
+        derivedStateOf {
+            currentRoute == Destination.Home.route
+        }
     }
+
+    var lastValidRoute by remember { mutableStateOf(Destination.Home.route) }
+
+    LaunchedEffect(currentRoute) {
+        currentRoute?.let { route ->
+            lastValidRoute = route
+        }
+    }
+
+    val fabVisibleStable by remember {
+        derivedStateOf {
+            lastValidRoute == Destination.Home.route
+        }
+    }
+
+    println(
+        "HomeScreen: currentRoute = $currentRoute, fabVisible = $fabVisibleStable"
+    )
+    val streakCountState = viewModel.streakCountState.collectAsState()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -62,15 +80,27 @@ fun HomeScreen(
             if (currentRoute == Destination.Home.route) {
                 HomeToolbar(
                     greeting = viewModel.greeting,
-                    onProfileClick = { /* Handle profile click */ },
+                    onProfileClick = {
+                        mainNavController.navigate(Destination.Profile.route)
+                    },
                     onNotificationClick = { /* Handle notification click */ },
-                    scrollBehavior = scrollBehavior
+                    scrollBehavior = scrollBehavior,
+                    onLogout = onLogout,
+                    name = viewModel.loginPreference.getUsername(),
+                    onProjectClick = {
+                        mainNavController.navigate(Destination.Projects.route)
+                    },
+                    onModuleClick = {
+                        mainNavController.navigate(Destination.Modules.route)
+                    },
+                    streakCountState = streakCountState,
+
                 )
             }
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = fabVisible,
+                visible = fabVisibleStable,
                 enter = scaleIn(
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -101,7 +131,8 @@ fun HomeScreen(
                     viewModel = viewModel,
                     onTaskClick = { taskId ->
                         mainNavController.navigate(Destination.TaskDetails.createRoute(taskId))
-                    }
+                    },
+
                 )
             }
             composable(Destination.Calendar.route) {
@@ -112,15 +143,15 @@ fun HomeScreen(
                 }
             }
             composable(Destination.Reminders.route) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    RemindersScreen()
-                }
+                RemindersScreen()
+
             }
             composable(Destination.TaskCreation.route) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    TaskCreationScreen()
-                }
+                TaskCreationScreen(
+                    onBackPressed = { homeNavController.popBackStack() }
+                )
             }
+
         }
     }
 }

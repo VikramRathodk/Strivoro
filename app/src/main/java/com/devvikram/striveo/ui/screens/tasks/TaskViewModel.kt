@@ -1,21 +1,28 @@
 package com.devvikram.striveo.ui.screens.tasks
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devvikram.striveo.config.constants.App
 import com.devvikram.striveo.config.constants.LoginPreference
 import com.devvikram.striveo.config.enums.TaskPriority
+import com.devvikram.striveo.config.enums.TaskStatus
 import com.devvikram.striveo.config.mappers.ModelMappers
 import com.devvikram.striveo.firebase.repository.FirebaseTaskRepository
+import com.devvikram.striveo.room.model.RoomModule
+import com.devvikram.striveo.room.model.RoomProject
 import com.devvikram.striveo.room.model.RoomTask
+import com.devvikram.striveo.room.repository.RoomModuleRepository
+import com.devvikram.striveo.room.repository.RoomProjectRepository
 import com.devvikram.striveo.room.repository.RoomTaskRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -28,8 +35,16 @@ class TaskViewModel @Inject constructor(
     private val loginPreference: LoginPreference,
     private val firebaseFirestore: FirebaseFirestore,
     private val firebaseTaskRepository: FirebaseTaskRepository,
-    private val roomTaskRepository: RoomTaskRepository
+    private val roomTaskRepository: RoomTaskRepository,
+    private val roomProjectRepository: RoomProjectRepository,
+    private val roomModuleRepository: RoomModuleRepository
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "TaskViewModel"
+    }
+    private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     // Task creation form states
     private val _title = MutableStateFlow("")
@@ -44,21 +59,52 @@ class TaskViewModel @Inject constructor(
     private val _priority = MutableStateFlow(TaskPriority.MEDIUM)
     val priority: StateFlow<TaskPriority> = _priority.asStateFlow()
 
-
     private val _tags = MutableStateFlow<List<String>>(emptyList())
     val tags: StateFlow<List<String>> = _tags.asStateFlow()
 
     private val _currentTag = MutableStateFlow("")
     val currentTag: StateFlow<String> = _currentTag.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _showSuccessMessage = MutableStateFlow(false)
-    val showSuccessMessage: StateFlow<Boolean> = _showSuccessMessage.asStateFlow()
-
     private val _validationErrors = MutableStateFlow<List<String>>(emptyList())
     val validationErrors: StateFlow<List<String>> = _validationErrors.asStateFlow()
+
+    private val _projects = MutableStateFlow<List<RoomProject>>(emptyList())
+    val projects: StateFlow<List<RoomProject>> = _projects.asStateFlow()
+
+    private val _selectedProject = MutableStateFlow<RoomProject?>(null)
+    val selectedProject: StateFlow<RoomProject?> = _selectedProject.asStateFlow()
+
+    private val _modules = MutableStateFlow<List<RoomModule>>(emptyList())
+    val modules: StateFlow<List<RoomModule>> = _modules.asStateFlow()
+
+    private val _selectedModule = MutableStateFlow<RoomModule?>(null)
+    val selectedModule: StateFlow<RoomModule?> = _selectedModule.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            roomProjectRepository.getAllProjectsFlow().collectLatest { list ->
+                _projects.value = list
+            }
+
+        }
+        viewModelScope.launch {
+            roomModuleRepository.getAllModulesFlow().collectLatest { list ->
+                _modules.value = list
+            }
+        }
+    }
+
+    fun getProjectList (): List<RoomProject> {
+        return projects.value
+    }
+    fun setSelectedProject(project: RoomProject?) {
+        _selectedProject.value = project
+    }
+
+    fun setSelectedModule(module: RoomModule?) {
+        _selectedModule.value = module
+    }
+
 
     // Predefined categories and suggestions
     val predefinedCategories = listOf(
@@ -118,11 +164,11 @@ class TaskViewModel @Inject constructor(
 
     fun createTask() {
         if (validateForm()) {
-            _isLoading.value = true
-
+            _uiState.value = UiState.Loading
             viewModelScope.launch {
                 try {
                     val taskId = firebaseFirestore.collection(App.FIREBASE_COLLECTION_TASKS).document().id
+
                     val roomTask = RoomTask(
                         taskId = taskId,
                         title = _title.value.trim(),
@@ -132,28 +178,32 @@ class TaskViewModel @Inject constructor(
                         estimatedTime = "",
                         dueDate = "",
                         isCompleted = false,
+                        status = TaskStatus.NOT_STARTED,
                         tags = _tags.value,
                         lastModifiedAt = System.currentTimeMillis(),
                         createdAt = System.currentTimeMillis(),
-                        createdBy = loginPreference.userId
+                        createdBy = loginPreference.getUserId(),
+                        projectId = _selectedProject.value?.projectId ?: "",
+                        moduleId = _selectedModule.value?.moduleId ?: ""
                     )
                     roomTaskRepository.insertTask(roomTask)
-                    val result = firebaseTaskRepository.saveTask(ModelMappers.toFirebaseTask(roomTask))
+                    val result =
+                        firebaseTaskRepository.saveTask(ModelMappers.toFirebaseTask(roomTask))
                     result.onFailure {
-                        _isLoading.value = false
+                        _uiState.value = UiState.Error("Failed to create task. Please try again.")
                         _validationErrors.value = listOf("Failed to create task. Please try again.")
                         return@launch
                     }.onSuccess {
-                        _isLoading.value = false
-                        _showSuccessMessage.value = true
-
+                        _uiState.value = UiState.Success("Task created successfully!")
                     }
 
                     // Reset form after successful creation
                     resetForm()
 
                 } catch (e: Exception) {
-                    _isLoading.value = false
+                    e.printStackTrace()
+                    Log.d(TAG, "createTask: Exception ${e.message}")
+                    _uiState.value = UiState.Error("Failed to create task. Please try again.")
                     _validationErrors.value = listOf("Failed to create task. Please try again.")
                 }
             }
@@ -170,12 +220,16 @@ class TaskViewModel @Inject constructor(
         if (_category.value.trim().isEmpty()) {
             errors.add("Category is required")
         }
-
+        if (_selectedProject.value == null) {
+            errors.add("Project is required")
+        }
+        if (_selectedModule.value == null) {
+            errors.add("Module is required")
+        }
 
         _validationErrors.value = errors
         return errors.isEmpty()
     }
-
 
 
     fun resetForm() {
@@ -186,9 +240,17 @@ class TaskViewModel @Inject constructor(
         _tags.value = emptyList()
         _currentTag.value = ""
         _validationErrors.value = emptyList()
+        _selectedProject.value = null
+        _selectedModule.value = null
     }
 
-    fun hideSuccessMessage() {
-        _showSuccessMessage.value = false
+    sealed class UiState {
+        object Idle : UiState()
+        object Loading : UiState()
+        data class Success(val message: String) : UiState()
+        data class Error(val message: String) : UiState()
+
     }
+
+
 }

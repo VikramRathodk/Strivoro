@@ -9,6 +9,7 @@ data class MyFirebaseUser(
     val name: String = "",                    // Full name
     val phone: String = "",                   // Phone number
     val email: String = "",                   // Email address
+    val password: String = "",                // Password
     val avatarUrl: String? = null,            // Profile picture URL
 
     val userType: String = UserAccountType.PERSONAL.name,        // Stored as String for compatibility: PERSONAL, ORGANIZATION, etc.

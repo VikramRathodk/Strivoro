@@ -9,11 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.devvikram.striveo.room.dao.TaskDao
-import com.devvikram.striveo.room.model.RoomTask
-import com.devvikram.striveo.room.repository.RoomTaskRepository
 
 @Composable
 fun HomeDashboardScreen(
@@ -46,29 +42,19 @@ fun HomeDashboardScreen(
                 onTaskToggle = { taskId ->
                     viewModel.toggleTask(taskId)
                 },
-                onTaskClick = onTaskClick
+                onTaskClick = onTaskClick,
+                onStatusChange = { taskId, taskStatus ->
+                    viewModel.updateTaskStatus(
+                        taskId = taskId,
+                        status = taskStatus
+                    )
+                },
+                viewModel = viewModel
             )
         }
         item { WeeklySummarySection(taskStats) }
     }
 }
 
-@Preview
-@Composable
-fun HomeDashboardScreenPreview() {
-    val taskDao = object : TaskDao {
-        override suspend fun insertTask(task: RoomTask) {}
-        override suspend fun updateTask(task: RoomTask) {}
-        override suspend fun deleteTask(task: RoomTask) {}
-        override suspend fun getTaskById(id: String): RoomTask? = null
-        override fun getAllTasks(): kotlinx.coroutines.flow.Flow<List<RoomTask>> =
-            kotlinx.coroutines.flow.flowOf(emptyList())
 
-        override suspend fun deleteAllTasks() {}
-    }
-    val roomTaskRepository = RoomTaskRepository(taskDao)
-    val viewModel = HomeViewModel(roomTaskRepository)
-    HomeDashboardScreen(
-        viewModel = viewModel,
-        onTaskClick = {})
-}
+

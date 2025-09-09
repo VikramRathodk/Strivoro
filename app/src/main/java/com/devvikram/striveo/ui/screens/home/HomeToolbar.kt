@@ -26,24 +26,40 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
+import com.devvikram.striveo.ui.reuseables.chips.TagChip
+import com.devvikram.striveo.ui.reuseables.dialogs.DialogBuilder
+import com.devvikram.striveo.ui.reuseables.dialogs.ReusableDialog
+import com.devvikram.striveo.ui.reuseables.dialogs.rememberDialogState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeToolbar(
-    streakCount: Int = 10,
     greeting: String,
     onProfileClick: () -> Unit,
     onNotificationClick: () -> Unit,
-    scrollBehavior: TopAppBarScrollBehavior
+    scrollBehavior: TopAppBarScrollBehavior,
+    onLogout: () -> Unit = {},
+    name: String = "User",
+    onProjectClick: () -> Unit,
+    onModuleClick: () -> Unit,
+    streakCountState: State<Int>
 ) {
+    val isLogoutConfirmation = remember { mutableStateOf(false) }
+    val confirmDialogState = rememberDialogState()
+
     LargeTopAppBar(
         title = {
             Column(
@@ -62,13 +78,27 @@ fun HomeToolbar(
                             .padding(bottom = 16.dp)
                             .animateContentSize()
                     ) {
-                        Text(
-                            text = greeting,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = 0.5.sp
-                        )
+                        Row {
+                            Text(
+                                text = "${greeting},",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 0.5.sp
+                            )
+                            Text(
+                                text = name,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 0.5.sp,
+                                modifier = Modifier.padding(start = 4.dp),
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
 
                         Spacer(modifier = Modifier.height(4.dp))
 
@@ -76,8 +106,12 @@ fun HomeToolbar(
                             text = "What's on your mind?",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            letterSpacing = (-0.5).sp
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            letterSpacing = (-0.5).sp,
+                            modifier = Modifier.animateContentSize(),
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -85,15 +119,45 @@ fun HomeToolbar(
         },
         actions = {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(end = 16.dp)
             ) {
+
+                TagChip(
+                    tag = "MODULES",
+                    onClick = {
+                        onModuleClick()
+                    },
+                    isSelected = true,
+                    isIconVisible = false
+                )
+
+                TagChip(
+                    tag = "PROJECTS",
+                    onClick = {
+                        onProjectClick()
+                    },
+                    isSelected = true,
+                    isIconVisible = false
+                )
+
                 // Streak Counter
                 StreakCounter(
-                    streakCount = streakCount,
+                    streakCount = streakCountState.value,
                     modifier = Modifier.animateContentSize()
                 )
+
+//                IconButton(
+//                    onClick = {
+//                        isLogoutConfirmation.value = true
+//                    }
+//                ) {
+//                    Icon(
+//                        imageVector = Icons.Default.ExitToApp,
+//                        contentDescription = "Logout",
+//                    )
+//                }
 
                 // Profile Avatar
                 Box(
@@ -118,7 +182,7 @@ fun HomeToolbar(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "V",
+                        name.take(1).uppercase(),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -128,8 +192,44 @@ fun HomeToolbar(
         },
         scrollBehavior = scrollBehavior,
         colors = TopAppBarDefaults.largeTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f)
+            containerColor = MaterialTheme.colorScheme.primary,
+            scrolledContainerColor = MaterialTheme.colorScheme.primary,
+            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
         )
+    )
+
+    if (isLogoutConfirmation.value) {
+        confirmDialogState.show()
+    }
+    ReusableDialog(
+        state = confirmDialogState,
+        config = DialogBuilder.confirmation(
+            title = "Logout",
+            message = "Are you sure you want to logout?",
+            onConfirm = {
+                onLogout()
+                isLogoutConfirmation.value = false
+            },
+            onDismiss = {
+                isLogoutConfirmation.value = false
+            }
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview
+@Composable
+fun HomeToolbarPreview() {
+    HomeToolbar(
+        greeting = "Good Morning",
+        onProfileClick = {},
+        onNotificationClick = {},
+        scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(),
+        onProjectClick = {},
+        onModuleClick = {},
+        streakCountState = remember { mutableStateOf(0) }
     )
 }

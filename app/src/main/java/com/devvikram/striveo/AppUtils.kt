@@ -1,7 +1,11 @@
 package com.devvikram.striveo
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.text.format.DateFormat
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.Date
 
 class AppUtils {
 
@@ -42,6 +46,35 @@ class AppUtils {
             return digest.joinToString("") { "%02x".format(it) }
         }
 
+
+        fun getCurrentAppVersion(context: Context): String {
+            return try {
+                val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    context.packageManager.getPackageInfo(
+                        context.packageName,
+                        PackageManager.PackageInfoFlags.of(0)
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.packageManager.getPackageInfo(context.packageName, 0)
+                }
+                packageInfo.versionName ?: "Unknown"
+            } catch (e: Exception) {
+                "Unknown"
+            }
+        }
+
+        fun formatDate(timestamp: Long,context: Context): String {
+            val date = Date(timestamp)
+            return DateFormat.getDateFormat(
+                context
+            ).format(date)
+        }
+
+        fun showToast(context: Context, message: String) {
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+
+        }
 
 
     }
